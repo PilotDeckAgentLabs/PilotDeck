@@ -24,6 +24,9 @@ CORS(app)  # 允许跨域请求
 DATA_FILE = os.path.join(os.path.dirname(__file__), '..', 'data', 'projects.json')
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 
+AGENT_RUNS_FILE = os.path.join(os.path.dirname(__file__), '..', 'data', 'agent_runs.json')
+AGENT_EVENTS_FILE = os.path.join(os.path.dirname(__file__), '..', 'data', 'agent_events.jsonl')
+
 DEPLOY_LOG_FILE = os.path.join(ROOT_DIR, 'deploy_run.log')
 DEPLOY_STATE_FILE = os.path.join(ROOT_DIR, 'deploy_state.json')
 DEPLOY_UNIT_PREFIX = 'myprojectmanager-deploy-'
@@ -38,6 +41,28 @@ def require_admin():
         }), 503)
 
     got = request.headers.get('X-PM-Token', '').strip()
+    if not got or not hmac.compare_digest(got, token):
+        return False, (jsonify({
+            "success": False,
+            "error": "Unauthorized"
+        }), 401)
+    return True, None
+
+
+def require_agent():
+    """Optional auth for agent-facing APIs.
+
+    If PM_AGENT_TOKEN is not set, the agent APIs are open (local-first default).
+    If PM_AGENT_TOKEN is set, callers must send X-PM-Agent-Token.
+    """
+    token = os.environ.get('PM_AGENT_TOKEN', '').strip()
+    if not token:
+        return True, None
+
+    got = request.headers.get('X-PM-Agent-Token', '').strip()
+    # Allow reuse of the admin header name for convenience when self-hosting.
+    if not got:
+        got = request.headers.get('X-PM-Token', '').strip()
     if not got or not hmac.compare_digest(got, token):
         return False, (jsonify({
             "success": False,
@@ -73,6 +98,152 @@ def write_json_file(file_path: str, data: Dict):
     with open(tmp, 'w', encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
     os.replace(tmp, file_path)
+
+
+def load_agent_runs() -> Dict:
+    if not os.path.exists(AGENT_RUNS_FILE):
+        data = {
+            "version": "1.0.0",
+            "lastUpdated": datetime.now().isoformat(),
+            "runs": [],
+        }
+        save_agent_runs(data)
+        return data
+
+    obj = read_json_file(AGENT_RUNS_FILE)
+    norm, changed = normalize_agent_runs_store(obj)
+    if changed:
+        save_agent_runs(norm)
+    return norm
+
+
+def save_agent_runs(data: Dict):
+    data['lastUpdated'] = datetime.now().isoformat()
+    write_json_file(AGENT_RUNS_FILE, data)
+
+
+def normalize_agent_runs_store(raw) -> (Dict, bool):
+    changed = False
+    now = datetime.now().isoformat()
+
+    if not isinstance(raw, dict):
+        raw = {}
+        changed = True
+
+    data = dict(raw)
+    if not isinstance(data.get('version'), str) or not data.get('version'):
+        data['version'] = '1.0.0'
+        changed = True
+    if not isinstance(data.get('lastUpdated'), str) or not data.get('lastUpdated'):
+        data['lastUpdated'] = now
+        changed = True
+
+    runs = data.get('runs')
+    if not isinstance(runs, list):
+        runs = []
+        data['runs'] = runs
+        changed = True
+
+    for i, r in enumerate(list(runs)):
+        nr, ch = normalize_agent_run(r)
+        if ch:
+            runs[i] = nr
+            changed = True
+
+    return data, changed
+
+
+def normalize_agent_run(r) -> (Dict, bool):
+    changed = False
+    now = datetime.now().isoformat()
+
+    if not isinstance(r, dict):
+        r = {}
+        changed = True
+    run = dict(r)
+
+    rid = run.get('id')
+    if not isinstance(rid, str) or not rid.strip():
+        run['id'] = f"run-{str(uuid.uuid4())[:8]}"
+        changed = True
+
+    for k in ('createdAt', 'updatedAt', 'startedAt'):
+        v = run.get(k)
+        if not isinstance(v, str) or not v:
+            run[k] = now
+            changed = True
+
+    status = run.get('status')
+    if not isinstance(status, str) or not status:
+        run['status'] = 'running'
+        changed = True
+
+    # Optional fields
+    for k in ('projectId', 'agentId', 'title', 'summary', 'finishedAt'):
+        if k not in run:
+            run[k] = None
+            changed = True
+
+    links = run.get('links')
+    if links is None:
+        run['links'] = []
+        changed = True
+    elif not isinstance(links, list):
+        run['links'] = [links]
+        changed = True
+
+    tags = run.get('tags')
+    if tags is None:
+        run['tags'] = []
+        changed = True
+    elif not isinstance(tags, list):
+        run['tags'] = [str(tags)] if str(tags).strip() else []
+        changed = True
+
+    metrics = run.get('metrics')
+    if metrics is None:
+        run['metrics'] = {}
+        changed = True
+    elif not isinstance(metrics, dict):
+        run['metrics'] = {}
+        changed = True
+
+    meta = run.get('meta')
+    if meta is None:
+        run['meta'] = {}
+        changed = True
+    elif not isinstance(meta, dict):
+        run['meta'] = {}
+        changed = True
+
+    return run, changed
+
+
+def append_agent_event(event: Dict):
+    os.makedirs(os.path.dirname(AGENT_EVENTS_FILE), exist_ok=True)
+    with open(AGENT_EVENTS_FILE, 'a', encoding='utf-8') as f:
+        f.write(json.dumps(event, ensure_ascii=False) + '\n')
+
+
+def parse_iso(ts: str) -> Optional[datetime]:
+    if not ts:
+        return None
+    try:
+        return datetime.fromisoformat(ts)
+    except Exception:
+        return None
+
+
+def clamp_int(v: int, lo: int, hi: int) -> int:
+    try:
+        iv = int(v)
+    except Exception:
+        iv = lo
+    if iv < lo:
+        return lo
+    if iv > hi:
+        return hi
+    return iv
 
 
 def deploy_state_read() -> Dict:
@@ -163,16 +334,29 @@ def parse_deploy_finish_from_log(job_id: str) -> Optional[int]:
     return None
 
 def load_data() -> Dict:
-    """加载项目数据"""
+    """加载项目数据。
+
+    Backward compatibility:
+    - If fields are missing or wrong-typed, fill defaults.
+    - If any normalization happens, write back to disk.
+    """
     if not os.path.exists(DATA_FILE):
-        return {
+        data = {
             "version": "1.0.0",
             "lastUpdated": datetime.now().isoformat(),
             "projects": []
         }
-    
+        # Persist the initial structure so future tooling can rely on it.
+        save_data(data)
+        return data
+
     with open(DATA_FILE, 'r', encoding='utf-8') as f:
-        return json.load(f)
+        raw = json.load(f)
+
+    data, changed = normalize_projects_store(raw)
+    if changed:
+        save_data(data)
+    return data
 
 def save_data(data: Dict):
     """保存项目数据"""
@@ -180,6 +364,152 @@ def save_data(data: Dict):
     os.makedirs(os.path.dirname(DATA_FILE), exist_ok=True)
     with open(DATA_FILE, 'w', encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
+
+
+def normalize_projects_store(raw) -> (Dict, bool):
+    """Normalize projects.json content, returning (data, changed)."""
+    changed = False
+    now = datetime.now().isoformat()
+
+    if not isinstance(raw, dict):
+        raw = {}
+        changed = True
+
+    data = dict(raw)
+    if not isinstance(data.get('version'), str) or not data.get('version'):
+        data['version'] = '1.0.0'
+        changed = True
+    if not isinstance(data.get('lastUpdated'), str) or not data.get('lastUpdated'):
+        data['lastUpdated'] = now
+        changed = True
+
+    projects = data.get('projects')
+    if not isinstance(projects, list):
+        projects = []
+        data['projects'] = projects
+        changed = True
+
+    for i, p in enumerate(list(projects)):
+        np, ch = normalize_project(p)
+        if ch:
+            projects[i] = np
+            changed = True
+
+    return data, changed
+
+
+def normalize_project(p) -> (Dict, bool):
+    """Normalize a single project record, returning (project, changed)."""
+    changed = False
+    now = datetime.now().isoformat()
+
+    if not isinstance(p, dict):
+        p = {}
+        changed = True
+    project = dict(p)
+
+    # Identity
+    pid = project.get('id')
+    if not isinstance(pid, str) or not pid.strip():
+        project['id'] = f"proj-{str(uuid.uuid4())[:8]}"
+        changed = True
+
+    # Name
+    name = project.get('name')
+    if name is None:
+        project['name'] = ''
+        changed = True
+
+    # Timestamps
+    created_at = project.get('createdAt')
+    updated_at = project.get('updatedAt')
+    if not isinstance(created_at, str) or not created_at:
+        # Prefer existing updatedAt if present, otherwise now
+        project['createdAt'] = updated_at if isinstance(updated_at, str) and updated_at else now
+        changed = True
+    if not isinstance(updated_at, str) or not updated_at:
+        project['updatedAt'] = now
+        changed = True
+
+    # Core fields
+    status = project.get('status')
+    if not isinstance(status, str) or not status:
+        project['status'] = 'planning'
+        changed = True
+    priority = project.get('priority')
+    if not isinstance(priority, str) or not priority:
+        project['priority'] = 'medium'
+        changed = True
+
+    progress = project.get('progress')
+    try:
+        prog = int(progress) if progress is not None else 0
+    except Exception:
+        prog = 0
+    if prog < 0:
+        prog = 0
+    if prog > 100:
+        prog = 100
+    if project.get('progress') != prog:
+        project['progress'] = prog
+        changed = True
+
+    desc = project.get('description')
+    if desc is None:
+        project['description'] = ''
+        changed = True
+    notes = project.get('notes')
+    if notes is None:
+        project['notes'] = ''
+        changed = True
+
+    # Tags
+    tags = project.get('tags')
+    if tags is None:
+        project['tags'] = []
+        changed = True
+    elif not isinstance(tags, list):
+        project['tags'] = [str(tags)] if str(tags).strip() else []
+        changed = True
+    else:
+        # Normalize to list[str] without empties
+        nt = []
+        for t in tags:
+            s = str(t).strip()
+            if s:
+                nt.append(s)
+        if nt != tags:
+            project['tags'] = nt
+            changed = True
+
+    # Cost / Revenue
+    for key in ('cost', 'revenue'):
+        v = project.get(key)
+        if v is None:
+            project[key] = {'total': 0}
+            changed = True
+        elif isinstance(v, (int, float)):
+            project[key] = {'total': float(v)}
+            changed = True
+        elif isinstance(v, dict):
+            total = v.get('total')
+            try:
+                tv = float(total) if total is not None else 0.0
+            except Exception:
+                tv = 0.0
+            if tv < 0:
+                tv = 0.0
+            # Keep other keys, but ensure total is numeric
+            if v.get('total') != tv:
+                nv = dict(v)
+                nv['total'] = tv
+                project[key] = nv
+                changed = True
+        else:
+            project[key] = {'total': 0}
+            changed = True
+
+    return project, changed
 
 # === API 路由 ===
 
@@ -462,6 +792,820 @@ def health_check():
         "status": "healthy",
         "timestamp": datetime.now().isoformat()
     })
+
+
+@app.route('/api/meta', methods=['GET'])
+def api_meta():
+    """Lightweight, agent-friendly metadata about the service."""
+    data = load_data()
+    return jsonify({
+        "success": True,
+        "data": {
+            "service": "MyProjectManager",
+            "apiBase": "/api",
+            "dataLastUpdated": data.get("lastUpdated"),
+            "projectCount": len(data.get("projects", []) or []),
+            "enums": {
+                "status": ["planning", "in-progress", "paused", "completed", "cancelled"],
+                "priority": ["low", "medium", "high", "urgent"],
+            },
+            "auth": {
+                "agentTokenRequired": bool(os.environ.get('PM_AGENT_TOKEN', '').strip()),
+                "adminTokenRequired": bool(os.environ.get('PM_ADMIN_TOKEN', '').strip()),
+                "agentHeader": "X-PM-Agent-Token",
+                "adminHeader": "X-PM-Token",
+            },
+            "capabilities": {
+                "projects": True,
+                "stats": True,
+                "agentRuns": True,
+                "agentEvents": True,
+                "agentActions": True,
+                "projectsBatch": True,
+                "projectsPatch": True,
+            }
+        }
+    })
+
+
+@app.route('/api/projects/<project_id>', methods=['PATCH'])
+def patch_project(project_id: str):
+    """Partial update for agents (same semantics as PUT, but explicitly PATCH)."""
+    try:
+        updates = request.get_json(silent=True) or {}
+        data = load_data()
+
+        project = None
+        for p in data.get("projects", []):
+            if p.get("id") == project_id:
+                project = p
+                break
+
+        if not project:
+            return jsonify({
+                "success": False,
+                "error": f"项目未找到: {project_id}"
+            }), 404
+
+        # Optional optimistic concurrency.
+        want = (updates or {}).get('ifUpdatedAt')
+        if want and str(project.get('updatedAt') or '') != str(want):
+            return jsonify({
+                "success": False,
+                "error": "Conflict: updatedAt mismatch",
+                "data": {
+                    "expectedUpdatedAt": want,
+                    "actualUpdatedAt": project.get('updatedAt'),
+                }
+            }), 409
+        if isinstance(updates, dict) and 'ifUpdatedAt' in updates:
+            updates = {k: v for k, v in updates.items() if k != 'ifUpdatedAt'}
+
+        protected_fields = ["id", "createdAt"]
+        for key, value in (updates or {}).items():
+            if key not in protected_fields:
+                project[key] = value
+
+        project["updatedAt"] = datetime.now().isoformat()
+        save_data(data)
+
+        return jsonify({
+            "success": True,
+            "data": project,
+            "message": "项目更新成功"
+        })
+
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+
+@app.route('/api/projects/batch', methods=['POST'])
+def batch_update_projects():
+    """Batch operations for agents.
+
+    Body:
+      {"ops": [{"id": "proj-...", "patch": {...}, "ifUpdatedAt": "...", "opId": "..."}, ...]}
+    """
+    try:
+        body = request.get_json(silent=True) or {}
+        ops = body.get('ops')
+        if not isinstance(ops, list):
+            return jsonify({
+                "success": False,
+                "error": "ops must be an array",
+            }), 400
+
+        data = load_data()
+        projects = data.get('projects', []) or []
+        by_id = {p.get('id'): p for p in projects if p.get('id')}
+
+        results = []
+        changed = False
+        now = datetime.now().isoformat()
+
+        for op in ops:
+            op_id = None
+            try:
+                if not isinstance(op, dict):
+                    raise ValueError('op must be an object')
+                op_id = op.get('opId')
+                pid = op.get('id')
+                patch = op.get('patch')
+                if_updated_at = op.get('ifUpdatedAt')
+
+                if not pid or not isinstance(pid, str):
+                    raise ValueError('id is required')
+                if not isinstance(patch, dict):
+                    raise ValueError('patch must be an object')
+
+                project = by_id.get(pid)
+                if not project:
+                    results.append({
+                        "opId": op_id,
+                        "id": pid,
+                        "success": False,
+                        "error": f"项目未找到: {pid}",
+                        "status": 404,
+                    })
+                    continue
+
+                if if_updated_at and str(project.get('updatedAt') or '') != str(if_updated_at):
+                    results.append({
+                        "opId": op_id,
+                        "id": pid,
+                        "success": False,
+                        "error": "Conflict: updatedAt mismatch",
+                        "status": 409,
+                        "data": {
+                            "expectedUpdatedAt": if_updated_at,
+                            "actualUpdatedAt": project.get('updatedAt'),
+                        }
+                    })
+                    continue
+
+                protected_fields = ["id", "createdAt"]
+                for k, v in patch.items():
+                    if k not in protected_fields:
+                        project[k] = v
+                project['updatedAt'] = now
+                changed = True
+                results.append({
+                    "opId": op_id,
+                    "id": pid,
+                    "success": True,
+                    "data": project,
+                    "status": 200,
+                })
+            except Exception as e:
+                results.append({
+                    "opId": op_id,
+                    "success": False,
+                    "error": str(e),
+                    "status": 400,
+                })
+
+        if changed:
+            save_data(data)
+
+        return jsonify({
+            "success": True,
+            "data": {
+                "results": results,
+                "changed": changed,
+                "lastUpdated": data.get('lastUpdated'),
+            }
+        })
+
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+
+def _agent_event_exists(event_id: str, max_lines: int = 5000) -> Optional[Dict]:
+    if not event_id:
+        return None
+    lines = read_last_lines(AGENT_EVENTS_FILE, max_lines=max_lines)
+    for line in reversed(lines):
+        try:
+            obj = json.loads(line)
+        except Exception:
+            continue
+        if isinstance(obj, dict) and obj.get('id') == event_id:
+            return obj
+    return None
+
+
+def normalize_agent_event(obj) -> Dict:
+    """Normalize an event dict for read responses.
+
+    NOTE: This does NOT write back to disk (events log is append-only).
+    """
+    if not isinstance(obj, dict):
+        obj = {}
+
+    out = dict(obj)
+    # Required-ish fields
+    if 'id' not in out:
+        out['id'] = None
+    if 'ts' not in out:
+        out['ts'] = None
+    if 'type' not in out:
+        out['type'] = 'note'
+    if 'level' not in out:
+        out['level'] = 'info'
+
+    # Common linkage fields
+    for k in ('projectId', 'runId', 'agentId'):
+        if k not in out:
+            out[k] = None
+
+    # Display fields
+    for k in ('title', 'message'):
+        if k not in out:
+            out[k] = None
+    if 'data' not in out:
+        out['data'] = None
+
+    # Coerce types lightly (avoid raising)
+    for k in ('id', 'ts', 'type', 'level', 'projectId', 'runId', 'agentId', 'title', 'message'):
+        v = out.get(k)
+        if v is None:
+            continue
+        if isinstance(v, (dict, list)):
+            continue
+        out[k] = str(v)
+
+    # Keep data as-is if it's JSON-ish; otherwise stringify
+    dv = out.get('data')
+    if dv is not None and not isinstance(dv, (dict, list, str, int, float, bool)):
+        out['data'] = str(dv)
+
+    return out
+
+
+def project_find_by_id(data: Dict, project_id: str) -> Optional[Dict]:
+    for p in data.get('projects', []) or []:
+        if isinstance(p, dict) and p.get('id') == project_id:
+            return p
+    return None
+
+
+def project_get_tags(project: Dict) -> List[str]:
+    tags = project.get('tags')
+    if not isinstance(tags, list):
+        return []
+    out = []
+    for t in tags:
+        s = str(t).strip()
+        if s and s not in out:
+            out.append(s)
+    return out
+
+
+def project_set_tags(project: Dict, tags: List[str]):
+    project['tags'] = tags
+
+
+def build_action_event(action_id: str, *, project_id: str, run_id: Optional[str], agent_id: Optional[str],
+                       typ: str, level: str, title: str, message: str, data: Dict) -> Dict:
+    now = datetime.now().isoformat()
+    return {
+        'id': action_id,
+        'ts': now,
+        'type': typ,
+        'level': level,
+        'projectId': project_id,
+        'runId': run_id,
+        'agentId': agent_id,
+        'title': title,
+        'message': message,
+        'data': data,
+    }
+
+
+@app.route('/api/agent/actions', methods=['POST'])
+def agent_actions():
+    """Semantic, agent-friendly actions.
+
+    This endpoint exists so agents do not need to understand the full project schema.
+    It also records a per-project execution trace via /api/agent/events.
+
+    Body:
+      {
+        "agentId": "...",        // optional
+        "runId": "...",          // optional
+        "actions": [
+          {
+            "id": "act-...",     // optional but recommended for idempotency
+            "projectId": "proj-...", // required unless top-level projectId is provided
+            "type": "set_status" | "set_priority" | "set_progress" | "bump_progress" | "append_note" | "add_tag" | "remove_tag",
+            "params": { ... },
+            "ifUpdatedAt": "...", // optional optimistic concurrency
+            "recordOnly": false     // optional
+          }
+        ]
+      }
+    """
+    ok, err = require_agent()
+    if not ok:
+        return err
+
+    try:
+        body = request.get_json(silent=True) or {}
+        agent_id = body.get('agentId')
+        run_id = body.get('runId')
+        default_project_id = body.get('projectId')
+        actions = body.get('actions')
+        if not isinstance(actions, list) or not actions:
+            return jsonify({"success": False, "error": "actions must be a non-empty array"}), 400
+
+        data = load_data()
+        changed = False
+        results = []
+
+        for a in actions:
+            try:
+                if not isinstance(a, dict):
+                    raise ValueError('action must be an object')
+
+                action_id = str(a.get('id') or '').strip()
+                if not action_id:
+                    action_id = f"act-{str(uuid.uuid4())[:8]}"
+
+                # Idempotency: if we already recorded this action id as an event, return it.
+                existing = _agent_event_exists(action_id)
+                if existing:
+                    pid = existing.get('projectId') or (a.get('projectId') or default_project_id)
+                    project = project_find_by_id(data, str(pid or '')) if pid else None
+                    results.append({
+                        "id": action_id,
+                        "success": True,
+                        "status": 200,
+                        "projectId": pid,
+                        "event": existing,
+                        "project": project,
+                        "message": "action exists",
+                    })
+                    continue
+
+                project_id = a.get('projectId') or default_project_id
+                if not project_id or not isinstance(project_id, str):
+                    raise ValueError('projectId is required')
+
+                project = project_find_by_id(data, project_id)
+                if not project:
+                    results.append({
+                        "id": action_id,
+                        "success": False,
+                        "status": 404,
+                        "projectId": project_id,
+                        "error": f"项目未找到: {project_id}",
+                    })
+                    continue
+
+                if_updated_at = a.get('ifUpdatedAt')
+                if if_updated_at and str(project.get('updatedAt') or '') != str(if_updated_at):
+                    results.append({
+                        "id": action_id,
+                        "success": False,
+                        "status": 409,
+                        "projectId": project_id,
+                        "error": "Conflict: updatedAt mismatch",
+                        "data": {
+                            "expectedUpdatedAt": if_updated_at,
+                            "actualUpdatedAt": project.get('updatedAt'),
+                        }
+                    })
+                    continue
+
+                action_type = str(a.get('type') or '').strip()
+                params = a.get('params') if isinstance(a.get('params'), dict) else {}
+                record_only = bool(a.get('recordOnly'))
+
+                # Apply action
+                before = {
+                    "status": project.get('status'),
+                    "priority": project.get('priority'),
+                    "progress": project.get('progress'),
+                    "tags": project_get_tags(project),
+                }
+
+                patch = {}
+                event_level = 'info'
+                event_message = ''
+
+                if action_type == 'set_status':
+                    status = str(params.get('status') or '').strip()
+                    allowed = {"planning", "in-progress", "paused", "completed", "cancelled"}
+                    if status not in allowed:
+                        raise ValueError(f"invalid status: {status}")
+                    if project.get('status') != status:
+                        patch['status'] = status
+                    event_message = f"set status -> {status}"
+
+                elif action_type == 'set_priority':
+                    pr = str(params.get('priority') or '').strip()
+                    allowed = {"low", "medium", "high", "urgent"}
+                    if pr not in allowed:
+                        raise ValueError(f"invalid priority: {pr}")
+                    if project.get('priority') != pr:
+                        patch['priority'] = pr
+                    event_message = f"set priority -> {pr}"
+
+                elif action_type == 'set_progress':
+                    v = params.get('progress')
+                    nv = clamp_int(v, 0, 100)
+                    if int(project.get('progress') or 0) != nv:
+                        patch['progress'] = nv
+                    event_message = f"set progress -> {nv}%"
+
+                elif action_type == 'bump_progress':
+                    delta = params.get('delta')
+                    try:
+                        d = int(delta)
+                    except Exception:
+                        raise ValueError('delta must be an integer')
+                    cur = int(project.get('progress') or 0)
+                    nv = clamp_int(cur + d, 0, 100)
+                    if cur != nv:
+                        patch['progress'] = nv
+                    event_message = f"bump progress {d} -> {nv}%"
+
+                elif action_type == 'append_note':
+                    note = str(params.get('note') or '').strip()
+                    if not note:
+                        raise ValueError('note is required')
+                    # Default behavior: record in event log only.
+                    also_write = bool(params.get('alsoWriteToProjectNotes'))
+                    if also_write:
+                        cur_notes = str(project.get('notes') or '').rstrip()
+                        prefix = datetime.now().strftime('%Y-%m-%d %H:%M')
+                        who = str(agent_id or 'agent')
+                        line = f"[{prefix}] ({who}) {note}"
+                        patch['notes'] = (cur_notes + "\n" + line).lstrip() if cur_notes else line
+                    event_message = note
+
+                elif action_type == 'add_tag':
+                    tag = str(params.get('tag') or '').strip()
+                    if not tag:
+                        raise ValueError('tag is required')
+                    tags = project_get_tags(project)
+                    if tag not in tags:
+                        tags.append(tag)
+                        patch['tags'] = tags
+                    event_message = f"add tag: {tag}"
+
+                elif action_type == 'remove_tag':
+                    tag = str(params.get('tag') or '').strip()
+                    if not tag:
+                        raise ValueError('tag is required')
+                    tags = project_get_tags(project)
+                    if tag in tags:
+                        tags = [t for t in tags if t != tag]
+                        patch['tags'] = tags
+                    event_message = f"remove tag: {tag}"
+
+                else:
+                    raise ValueError(f"unknown action type: {action_type}")
+
+                after = {
+                    "status": patch.get('status', project.get('status')),
+                    "priority": patch.get('priority', project.get('priority')),
+                    "progress": patch.get('progress', project.get('progress')),
+                    "tags": patch.get('tags', project_get_tags(project)),
+                }
+
+                # Persist mutation
+                if (not record_only) and patch:
+                    for k, v in patch.items():
+                        if k in ("id", "createdAt"):
+                            continue
+                        project[k] = v
+                    project['updatedAt'] = datetime.now().isoformat()
+                    changed = True
+
+                # Always append event for traceability
+                evt = build_action_event(
+                    action_id,
+                    project_id=project_id,
+                    run_id=run_id,
+                    agent_id=agent_id,
+                    typ=f"action.{action_type}",
+                    level=event_level,
+                    title=action_type,
+                    message=event_message,
+                    data={
+                        "action": {
+                            "type": action_type,
+                            "params": params,
+                            "recordOnly": record_only,
+                            "ifUpdatedAt": if_updated_at,
+                        },
+                        "before": before,
+                        "after": after,
+                        "projectUpdatedAt": project.get('updatedAt'),
+                    }
+                )
+                append_agent_event(evt)
+
+                results.append({
+                    "id": action_id,
+                    "success": True,
+                    "status": 200,
+                    "projectId": project_id,
+                    "changed": bool((not record_only) and patch),
+                    "project": project,
+                    "event": evt,
+                })
+
+            except Exception as e:
+                results.append({
+                    "success": False,
+                    "status": 400,
+                    "error": str(e),
+                    "action": a,
+                })
+
+        if changed:
+            save_data(data)
+
+        return jsonify({
+            "success": True,
+            "data": {
+                "results": results,
+                "changed": changed,
+                "lastUpdated": data.get('lastUpdated'),
+            }
+        })
+
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route('/api/agent/events', methods=['POST'])
+def agent_create_event():
+    ok, err = require_agent()
+    if not ok:
+        return err
+
+    try:
+        body = request.get_json(silent=True) or {}
+
+        event_id = str(body.get('id') or '').strip()
+        if event_id:
+            existing = _agent_event_exists(event_id)
+            if existing:
+                return jsonify({"success": True, "data": existing, "message": "event exists"})
+        else:
+            event_id = f"evt-{str(uuid.uuid4())[:8]}"
+
+        now = datetime.now().isoformat()
+        event = {
+            "id": event_id,
+            "ts": now,
+            "type": str(body.get('type') or 'note').strip(),
+            "level": str(body.get('level') or 'info').strip(),
+            "projectId": body.get('projectId'),
+            "runId": body.get('runId'),
+            "agentId": body.get('agentId'),
+            "title": body.get('title'),
+            "message": body.get('message'),
+            "data": body.get('data'),
+        }
+
+        append_agent_event(event)
+        return jsonify({"success": True, "data": event}), 201
+
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route('/api/agent/events', methods=['GET'])
+def agent_list_events():
+    ok, err = require_agent()
+    if not ok:
+        return err
+
+    try:
+        project_id = request.args.get('projectId')
+        run_id = request.args.get('runId')
+        agent_id = request.args.get('agentId')
+        typ = request.args.get('type')
+        since = request.args.get('since')
+        limit = request.args.get('limit')
+        tail = request.args.get('tail')
+
+        since_dt = parse_iso(str(since or '').strip())
+        lim = 200
+        if limit:
+            try:
+                lim = max(1, min(2000, int(limit)))
+            except Exception:
+                lim = 200
+
+        max_lines = 2000
+        if tail:
+            try:
+                max_lines = max(100, min(20000, int(tail)))
+            except Exception:
+                max_lines = 2000
+
+        lines = read_last_lines(AGENT_EVENTS_FILE, max_lines=max_lines)
+        events: List[Dict] = []
+        for line in lines:
+            try:
+                obj = json.loads(line)
+            except Exception:
+                continue
+            if not isinstance(obj, dict):
+                continue
+            obj = normalize_agent_event(obj)
+            if project_id and obj.get('projectId') != project_id:
+                continue
+            if run_id and obj.get('runId') != run_id:
+                continue
+            if agent_id and obj.get('agentId') != agent_id:
+                continue
+            if typ and obj.get('type') != typ:
+                continue
+            if since_dt:
+                ts = parse_iso(str(obj.get('ts') or '').strip())
+                if not ts or ts < since_dt:
+                    continue
+            events.append(obj)
+
+        if len(events) > lim:
+            events = events[-lim:]
+
+        return jsonify({
+            "success": True,
+            "data": events,
+            "total": len(events),
+        })
+
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route('/api/agent/runs', methods=['POST'])
+def agent_create_run():
+    ok, err = require_agent()
+    if not ok:
+        return err
+
+    try:
+        body = request.get_json(silent=True) or {}
+        run_id = str(body.get('id') or '').strip()
+        if not run_id:
+            run_id = f"run-{str(uuid.uuid4())[:8]}"
+
+        store = load_agent_runs()
+        runs = store.get('runs', []) or []
+        for r in runs:
+            if isinstance(r, dict) and r.get('id') == run_id:
+                return jsonify({"success": True, "data": r, "message": "run exists"})
+
+        now = datetime.now().isoformat()
+        run = {
+            "id": run_id,
+            "createdAt": now,
+            "updatedAt": now,
+            "startedAt": body.get('startedAt') or now,
+            "finishedAt": body.get('finishedAt'),
+            "status": body.get('status') or 'running',
+            "projectId": body.get('projectId'),
+            "agentId": body.get('agentId'),
+            "title": body.get('title'),
+            "summary": body.get('summary'),
+            "links": body.get('links') if isinstance(body.get('links'), list) else [],
+            "metrics": body.get('metrics') if isinstance(body.get('metrics'), dict) else {},
+            "tags": body.get('tags') if isinstance(body.get('tags'), list) else [],
+            "meta": body.get('meta') if isinstance(body.get('meta'), dict) else {},
+        }
+
+        runs.append(run)
+        store['runs'] = runs
+        save_agent_runs(store)
+        return jsonify({"success": True, "data": run}), 201
+
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route('/api/agent/runs', methods=['GET'])
+def agent_list_runs():
+    ok, err = require_agent()
+    if not ok:
+        return err
+
+    try:
+        project_id = request.args.get('projectId')
+        agent_id = request.args.get('agentId')
+        status = request.args.get('status')
+        limit = request.args.get('limit')
+        offset = request.args.get('offset')
+
+        lim = 50
+        off = 0
+        if limit:
+            try:
+                lim = max(1, min(500, int(limit)))
+            except Exception:
+                lim = 50
+        if offset:
+            try:
+                off = max(0, int(offset))
+            except Exception:
+                off = 0
+
+        store = load_agent_runs()
+        runs = store.get('runs', []) or []
+        out = []
+        for r in runs:
+            if not isinstance(r, dict):
+                continue
+            if project_id and r.get('projectId') != project_id:
+                continue
+            if agent_id and r.get('agentId') != agent_id:
+                continue
+            if status and r.get('status') != status:
+                continue
+            out.append(r)
+
+        # Most recent first
+        out.sort(key=lambda x: str(x.get('createdAt') or ''), reverse=True)
+        page = out[off:off + lim]
+
+        return jsonify({
+            "success": True,
+            "data": page,
+            "total": len(out),
+            "limit": lim,
+            "offset": off,
+        })
+
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route('/api/agent/runs/<run_id>', methods=['GET'])
+def agent_get_run(run_id: str):
+    ok, err = require_agent()
+    if not ok:
+        return err
+
+    store = load_agent_runs()
+    runs = store.get('runs', []) or []
+    for r in runs:
+        if isinstance(r, dict) and r.get('id') == run_id:
+            return jsonify({"success": True, "data": r})
+    return jsonify({"success": False, "error": f"run not found: {run_id}"}), 404
+
+
+@app.route('/api/agent/runs/<run_id>', methods=['PATCH'])
+def agent_patch_run(run_id: str):
+    ok, err = require_agent()
+    if not ok:
+        return err
+
+    try:
+        patch = request.get_json(silent=True) or {}
+        store = load_agent_runs()
+        runs = store.get('runs', []) or []
+
+        run = None
+        for r in runs:
+            if isinstance(r, dict) and r.get('id') == run_id:
+                run = r
+                break
+        if not run:
+            return jsonify({"success": False, "error": f"run not found: {run_id}"}), 404
+
+        protected = ['id', 'createdAt']
+        for k, v in (patch or {}).items():
+            if k in protected:
+                continue
+            if k == 'links' and not isinstance(v, list):
+                continue
+            if k == 'metrics' and not isinstance(v, dict):
+                continue
+            if k == 'tags' and not isinstance(v, list):
+                continue
+            if k == 'meta' and not isinstance(v, dict):
+                continue
+            run[k] = v
+
+        run['updatedAt'] = datetime.now().isoformat()
+        save_agent_runs(store)
+        return jsonify({"success": True, "data": run})
+
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
 
 
 # === 运维接口（危险操作：需要 PM_ADMIN_TOKEN） ===
