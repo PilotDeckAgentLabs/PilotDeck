@@ -72,8 +72,17 @@ async function apiFetch(path, options = {}) {
   if (!res.ok) {
     const errMsg = (json && (json.error || json.message)) || `HTTP ${res.status}`
     const outRaw = (json && json.output) ? String(json.output || '') : ''
-    const out = outRaw ? outRaw.split('\n').slice(-80).join('\n').trim() : ''
-    throw new Error(out ? `${errMsg}\n${out}` : errMsg)
+    const exitCode = (json && json.exitCode) ? ` (exit ${json.exitCode})` : ''
+    
+    // Show last 100 lines of output for better debugging
+    const out = outRaw ? outRaw.split('\n').slice(-100).join('\n').trim() : ''
+    
+    // Format error message with clear structure
+    const fullMsg = out 
+      ? `${errMsg}${exitCode}\n\n=== 详细输出（最后100行） ===\n${out}`
+      : `${errMsg}${exitCode}`
+    
+    throw new Error(fullMsg)
   }
   return json
 }
@@ -702,9 +711,11 @@ async function opsPushData() {
       body: JSON.stringify({ mode: 'data-only' }),
     })
     appendOpsOutput((res && res.output) ? `${res.output}\n` : '[INFO] Done.\n')
+    showToast('数据已推送到 GitHub', 'success')
   } catch (e) {
-    appendOpsOutput(`[ERROR] ${e.message}\n`)
-    showToast(e.message, 'error')
+    // Error message already includes detailed output from apiFetch
+    appendOpsOutput(`\n${e.message}\n`)
+    showToast('推送失败，请查看详细输出', 'error')
   }
 }
 
@@ -715,8 +726,9 @@ async function opsPullDataRepo() {
     appendOpsOutput((res && res.output) ? `${res.output}\n` : '[INFO] Done.\n')
     showToast('数据仓库已更新', 'success')
   } catch (e) {
-    appendOpsOutput(`[ERROR] ${e.message}\n`)
-    showToast(e.message, 'error')
+    // Error message already includes detailed output from apiFetch
+    appendOpsOutput(`\n${e.message}\n`)
+    showToast('拉取失败，请查看详细输出', 'error')
   }
 }
 

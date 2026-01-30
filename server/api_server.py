@@ -500,6 +500,11 @@ def admin_push_to_github():
         cmd.append('--all')
 
     try:
+        # Ensure git can find config and SSH keys when run from systemd
+        env = os.environ.copy()
+        env.setdefault('HOME', os.path.expanduser('~'))
+        env.setdefault('USER', os.getenv('USER', 'root'))
+        
         p = subprocess.run(
             cmd,
             cwd=ROOT_DIR,
@@ -508,23 +513,35 @@ def admin_push_to_github():
             text=True,
             timeout=180,
             check=False,
+            env=env,
         )
+        
+        output = (p.stdout or '').strip()
+        
         if p.returncode != 0:
+            # Extract meaningful error from output
+            lines = output.split('\n')
+            error_lines = [line for line in lines if '[ERROR]' in line or 'fatal:' in line or 'error:' in line]
+            error_summary = error_lines[-1] if error_lines else f"push failed (exit {p.returncode})"
+            
             return jsonify({
                 "success": False,
-                "error": f"push failed (exit {p.returncode})",
-                "output": p.stdout
+                "error": error_summary,
+                "output": output,
+                "exitCode": p.returncode
             }), 500
 
         return jsonify({
             "success": True,
-            "output": p.stdout
+            "output": output
         })
 
-    except subprocess.TimeoutExpired:
+    except subprocess.TimeoutExpired as e:
+        output = (e.stdout or '').strip() if hasattr(e, 'stdout') else ''
         return jsonify({
             "success": False,
-            "error": "push timed out",
+            "error": "push timed out (exceeded 180 seconds)",
+            "output": output
         }), 504
 
 
@@ -548,6 +565,11 @@ def admin_pull_data_repo():
         }), 500
 
     try:
+        # Ensure git can find config and SSH keys when run from systemd
+        env = os.environ.copy()
+        env.setdefault('HOME', os.path.expanduser('~'))
+        env.setdefault('USER', os.getenv('USER', 'root'))
+        
         p = subprocess.run(
             ['bash', script],
             cwd=ROOT_DIR,
@@ -556,25 +578,38 @@ def admin_pull_data_repo():
             text=True,
             timeout=180,
             check=False,
+            env=env,
         )
+        
+        output = (p.stdout or '').strip()
+        
         if p.returncode != 0:
             # 2: dirty worktree, 4/5/6: misconfig
             http = 409 if p.returncode == 2 else 500
+            
+            # Extract meaningful error from output
+            lines = output.split('\n')
+            error_lines = [line for line in lines if '[ERROR]' in line or 'fatal:' in line or 'error:' in line]
+            error_summary = error_lines[-1] if error_lines else f"pull data repo failed (exit {p.returncode})"
+            
             return jsonify({
                 "success": False,
-                "error": f"pull data repo failed (exit {p.returncode})",
-                "output": p.stdout
+                "error": error_summary,
+                "output": output,
+                "exitCode": p.returncode
             }), http
 
         return jsonify({
             "success": True,
-            "output": p.stdout
+            "output": output
         })
 
-    except subprocess.TimeoutExpired:
+    except subprocess.TimeoutExpired as e:
+        output = (e.stdout or '').strip() if hasattr(e, 'stdout') else ''
         return jsonify({
             "success": False,
-            "error": "pull data repo timed out",
+            "error": "pull data repo timed out (exceeded 180 seconds)",
+            "output": output
         }), 504
 
 
