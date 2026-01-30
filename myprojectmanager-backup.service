@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+# systemd service unit for automatic daily data backup
+# This unit is triggered by myprojectmanager-backup.timer
+# DO NOT run this unit directly; use the timer instead.
+
+[Unit]
+Description=MyProjectManager Daily Data Backup to GitHub
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/root/MyProjectManager
+ExecStart=/bin/bash /root/MyProjectManager/push_data_to_github.sh
+
+# Environment variables for git (adjust if running as non-root user)
+Environment="HOME=/root"
+Environment="USER=root"
+Environment="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=myprojectmanager-backup
+
+# Security: Don't restart on failure (data backup is idempotent)
+Restart=no
+
+# Timeout: 5 minutes should be enough for a data push
+TimeoutStartSec=300
+
+[Install]
+WantedBy=multi-user.target

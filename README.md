@@ -80,11 +80,12 @@ start_server.ps1
 
 本项目默认监听 `8689`。服务器部署场景使用 `deploy_pull_restart.sh` 一键拉取、安装依赖并重启服务。
 
-仓库内已提供两条适合在服务器上执行的脚本：
+仓库内已提供以下运维脚本：
 
 1) 从 GitHub 拉取更新并部署、重启：`deploy_pull_restart.sh`
 2) 将数据仓库的本地修改推送到 GitHub：`push_data_to_github.sh`
 3) 拉取数据仓库更新：`pull_data_repo.sh`
+4) 设置每天自动备份数据：`setup_auto_backup.sh`（推荐）
 
 脚本说明见脚本文件头部注释。
 
@@ -122,7 +123,49 @@ systemctl restart myprojectmanager
 journalctl -u myprojectmanager -f
 ```
 
-### 3) 访问
+### 4) 设置自动数据备份（推荐）
+
+为了防止数据丢失，建议设置每天自动将数据推送到 GitHub 数据仓库。
+
+在服务器上执行（需要 root 权限）：
+
+```bash
+sudo ./setup_auto_backup.sh
+```
+
+这将：
+- 安装 systemd timer，每天 0 点（午夜）自动执行 `push_data_to_github.sh`
+- 如果系统在触发时间关机，开机后会立即执行一次备份（`Persistent=true`）
+- 添加最多 30 分钟的随机延迟，避免集中负载
+
+**管理自动备份**：
+
+```bash
+# 查看定时器状态和下次运行时间
+sudo ./setup_auto_backup.sh status
+
+# 查看备份日志
+journalctl -u myprojectmanager-backup.service -f
+
+# 禁用自动备份（可以重新启用）
+sudo ./setup_auto_backup.sh disable
+
+# 完全移除定时器
+sudo ./setup_auto_backup.sh remove
+```
+
+**手动测试备份**：
+
+```bash
+# 手动触发一次备份（不影响定时器）
+sudo systemctl start myprojectmanager-backup.service
+
+# 查看执行结果
+sudo systemctl status myprojectmanager-backup.service
+journalctl -u myprojectmanager-backup.service -n 50
+```
+
+### 5) 访问
 
 - Web 界面：`http://<server-ip>:8689/`
 - API 基地址：`http://<server-ip>:8689/api`
