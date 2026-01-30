@@ -278,6 +278,19 @@ function renderProjectsAsCards(displayProjects) {
   const grid = document.createElement('div')
   grid.className = 'projects-grid'
 
+  function makeSelect(options, value) {
+    const sel = document.createElement('select')
+    sel.className = 'pm-cell-input card-select'
+    options.forEach(([v, label]) => {
+      const opt = document.createElement('option')
+      opt.value = v
+      opt.textContent = label
+      sel.appendChild(opt)
+    })
+    sel.value = value
+    return sel
+  }
+
   displayProjects.forEach((p) => {
     const card = document.createElement('div')
     card.className = 'project-card'
@@ -293,38 +306,66 @@ function renderProjectsAsCards(displayProjects) {
       card.appendChild(dragHandle)
     }
 
-    // Card header with name
+    // Card header with editable name
     const cardHeader = document.createElement('div')
     cardHeader.className = 'card-header'
-    const cardTitle = document.createElement('h3')
-    cardTitle.className = 'card-title'
-    cardTitle.textContent = p.name || '未命名项目'
-    cardHeader.appendChild(cardTitle)
+    const nameInput = document.createElement('input')
+    nameInput.className = 'card-title-input'
+    nameInput.type = 'text'
+    nameInput.value = p.name || ''
+    nameInput.setAttribute('data-field', 'name')
+    nameInput.placeholder = '项目名称'
+    cardHeader.appendChild(nameInput)
     card.appendChild(cardHeader)
 
-    // Status and priority badges
+    // Status and priority selects (styled as badges)
     const cardMeta = document.createElement('div')
     cardMeta.className = 'card-meta'
     
-    const statusBadge = document.createElement('span')
-    statusBadge.className = `badge badge-${p.status || 'planning'}`
-    statusBadge.textContent = getStatusLabel(p.status)
-    cardMeta.appendChild(statusBadge)
+    const statusSel = makeSelect([
+      ['planning', '计划中'],
+      ['in-progress', '进行中'],
+      ['paused', '暂停'],
+      ['completed', '已完成'],
+      ['cancelled', '已取消'],
+    ], p.status || 'planning')
+    statusSel.className = `card-badge-select badge-${p.status || 'planning'}`
+    statusSel.setAttribute('data-field', 'status')
+    cardMeta.appendChild(statusSel)
 
-    const priorityBadge = document.createElement('span')
-    priorityBadge.className = `badge badge-priority-${p.priority || 'medium'}`
-    priorityBadge.textContent = getPriorityLabel(p.priority)
-    cardMeta.appendChild(priorityBadge)
+    const prioritySel = makeSelect([
+      ['low', '低'],
+      ['medium', '中'],
+      ['high', '高'],
+      ['urgent', '紧急'],
+    ], p.priority || 'medium')
+    prioritySel.className = `card-badge-select badge-priority-${p.priority || 'medium'}`
+    prioritySel.setAttribute('data-field', 'priority')
+    cardMeta.appendChild(prioritySel)
     
     card.appendChild(cardMeta)
 
-    // Progress bar
+    // Progress bar with editable input
     const progressSection = document.createElement('div')
     progressSection.className = 'card-progress'
-    const progressLabel = document.createElement('div')
-    progressLabel.className = 'progress-label'
-    progressLabel.textContent = `进度: ${p.progress || 0}%`
-    progressSection.appendChild(progressLabel)
+    const progressHeader = document.createElement('div')
+    progressHeader.className = 'progress-header'
+    const progressLabelSpan = document.createElement('span')
+    progressLabelSpan.textContent = '进度:'
+    const progressInput = document.createElement('input')
+    progressInput.className = 'progress-input'
+    progressInput.type = 'number'
+    progressInput.min = '0'
+    progressInput.max = '100'
+    progressInput.step = '1'
+    progressInput.value = String(Number(p.progress || 0))
+    progressInput.setAttribute('data-field', 'progress')
+    const progressPercent = document.createElement('span')
+    progressPercent.textContent = '%'
+    progressHeader.appendChild(progressLabelSpan)
+    progressHeader.appendChild(progressInput)
+    progressHeader.appendChild(progressPercent)
+    progressSection.appendChild(progressHeader)
     
     const progressBar = document.createElement('div')
     progressBar.className = 'progress-bar'
@@ -335,15 +376,40 @@ function renderProjectsAsCards(displayProjects) {
     progressSection.appendChild(progressBar)
     card.appendChild(progressSection)
 
-    // Cost and revenue
+    // Cost and revenue with editable inputs
     const cardFinance = document.createElement('div')
     cardFinance.className = 'card-finance'
+    
     const costDiv = document.createElement('div')
     costDiv.className = 'finance-item'
-    costDiv.innerHTML = `<span class="finance-label">成本:</span> <span class="finance-value">¥${getCostTotal(p).toFixed(2)}</span>`
+    const costLabel = document.createElement('span')
+    costLabel.className = 'finance-label'
+    costLabel.textContent = '成本:'
+    const costInput = document.createElement('input')
+    costInput.className = 'finance-input'
+    costInput.type = 'number'
+    costInput.min = '0'
+    costInput.step = '0.01'
+    costInput.value = String(getCostTotal(p))
+    costInput.setAttribute('data-field', 'costTotal')
+    costDiv.appendChild(costLabel)
+    costDiv.appendChild(costInput)
+    
     const revenueDiv = document.createElement('div')
     revenueDiv.className = 'finance-item'
-    revenueDiv.innerHTML = `<span class="finance-label">收入:</span> <span class="finance-value">¥${getRevenueTotal(p).toFixed(2)}</span>`
+    const revenueLabel = document.createElement('span')
+    revenueLabel.className = 'finance-label'
+    revenueLabel.textContent = '收入:'
+    const revenueInput = document.createElement('input')
+    revenueInput.className = 'finance-input'
+    revenueInput.type = 'number'
+    revenueInput.min = '0'
+    revenueInput.step = '0.01'
+    revenueInput.value = String(getRevenueTotal(p))
+    revenueInput.setAttribute('data-field', 'revenueTotal')
+    revenueDiv.appendChild(revenueLabel)
+    revenueDiv.appendChild(revenueInput)
+    
     cardFinance.appendChild(costDiv)
     cardFinance.appendChild(revenueDiv)
     card.appendChild(cardFinance)
@@ -369,6 +435,104 @@ function renderProjectsAsCards(displayProjects) {
   })
 
   list.appendChild(grid)
+
+  // Event handlers for editing
+  grid.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') return
+    const el = e.target
+    if (!el || !el.getAttribute) return
+    if (!el.getAttribute('data-field')) return
+    e.preventDefault()
+    el.blur()
+  }, true)
+
+  async function commitCardField(el) {
+    const field = el.getAttribute('data-field')
+    const card = el.closest('.project-card[data-id]')
+    if (!field || !card) return
+    const projectId = card.getAttribute('data-id')
+    const p = findProjectById(projectId)
+    if (!p) return
+
+    let patch = null
+    if (field === 'name') {
+      const v = String(el.value || '').trim()
+      if (!v) {
+        showToast('项目名称不能为空', 'error')
+        el.value = p.name || ''
+        return
+      }
+      if (v === (p.name || '')) return
+      patch = { name: v }
+    } else if (field === 'status') {
+      const v = String(el.value || '').trim()
+      if (v === (p.status || 'planning')) return
+      // Update select class to match new status
+      el.className = `card-badge-select badge-${v}`
+      patch = { status: v }
+    } else if (field === 'priority') {
+      const v = String(el.value || '').trim()
+      if (v === (p.priority || 'medium')) return
+      // Update select class to match new priority
+      el.className = `card-badge-select badge-priority-${v}`
+      patch = { priority: v }
+    } else if (field === 'progress') {
+      const v = Number(el.value)
+      if (Number.isNaN(v) || v < 0 || v > 100) {
+        showToast('进度必须在0-100之间', 'error')
+        el.value = String(Number(p.progress || 0))
+        return
+      }
+      if (v === Number(p.progress || 0)) return
+      // Update progress bar
+      const progressBar = card.querySelector('.progress-fill')
+      if (progressBar) progressBar.style.width = `${v}%`
+      patch = { progress: v }
+    } else if (field === 'costTotal') {
+      const v = Number(el.value)
+      if (Number.isNaN(v) || v < 0) {
+        showToast('成本必须是非负数字', 'error')
+        el.value = String(getCostTotal(p))
+        return
+      }
+      if (v === getCostTotal(p)) return
+      patch = { cost: { ...(p.cost || {}), total: v } }
+    } else if (field === 'revenueTotal') {
+      const v = Number(el.value)
+      if (Number.isNaN(v) || v < 0) {
+        showToast('收入必须是非负数字', 'error')
+        el.value = String(getRevenueTotal(p))
+        return
+      }
+      if (v === getRevenueTotal(p)) return
+      patch = { revenue: { ...(p.revenue || {}), total: v } }
+    }
+
+    if (!patch) return
+    try {
+      setSaving(el, true)
+      await updateProjectPartial(projectId, patch)
+    } catch (e) {
+      showToast(`保存失败: ${e.message}`, 'error')
+      await loadProjects()
+    } finally {
+      setSaving(el, false)
+    }
+  }
+
+  grid.addEventListener('change', (e) => {
+    const el = e.target
+    if (!el || !el.getAttribute) return
+    if (!el.getAttribute('data-field')) return
+    commitCardField(el)
+  }, true)
+
+  grid.addEventListener('blur', (e) => {
+    const el = e.target
+    if (!el || !el.getAttribute) return
+    if (!el.getAttribute('data-field')) return
+    commitCardField(el)
+  }, true)
 
   // Event handlers for card actions
   grid.addEventListener('click', (e) => {
