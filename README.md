@@ -84,6 +84,7 @@ start_server.ps1
 
 1) 从 GitHub 拉取更新并部署、重启：`deploy_pull_restart.sh`
 2) 将数据仓库的本地修改推送到 GitHub：`push_data_to_github.sh`
+3) 拉取数据仓库更新：`pull_data_repo.sh`
 
 脚本说明见脚本文件头部注释。
 

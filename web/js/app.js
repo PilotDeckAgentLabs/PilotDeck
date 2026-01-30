@@ -706,6 +706,18 @@ async function opsPushData() {
   }
 }
 
+async function opsPullDataRepo() {
+  try {
+    setOpsOutput('[INFO] Pulling data repo updates from GitHub...\n')
+    const res = await opsFetch('/admin/data/pull', { method: 'POST' })
+    appendOpsOutput((res && res.output) ? `${res.output}\n` : '[INFO] Done.\n')
+    showToast('数据仓库已更新', 'success')
+  } catch (e) {
+    appendOpsOutput(`[ERROR] ${e.message}\n`)
+    showToast(e.message, 'error')
+  }
+}
+
 async function opsPullRestart() {
   try {
     setOpsOutput('[INFO] Starting deploy_pull_restart.sh in background...\n')
@@ -1026,6 +1038,7 @@ window.closeProjectDetailModal = closeProjectDetailModal
 window.openOpsModal = openOpsModal
 window.closeOpsModal = closeOpsModal
 window.opsPushData = opsPushData
+window.opsPullDataRepo = opsPullDataRepo
 window.opsPullRestart = opsPullRestart
 window.opsFetchDeployLog = opsFetchDeployLog
 window.opsStartDeployLog = opsStartDeployLog

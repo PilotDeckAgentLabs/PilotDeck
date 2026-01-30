@@ -528,6 +528,56 @@ def admin_push_to_github():
         }), 504
 
 
+@app.route('/api/admin/data/pull', methods=['POST'])
+def admin_pull_data_repo():
+    ok, err = require_admin()
+    if not ok:
+        return err
+
+    if os.name != 'posix':
+        return jsonify({
+            "success": False,
+            "error": "This endpoint requires Linux (bash)."
+        }), 400
+
+    script = os.path.join(ROOT_DIR, 'pull_data_repo.sh')
+    if not os.path.exists(script):
+        return jsonify({
+            "success": False,
+            "error": "pull_data_repo.sh not found"
+        }), 500
+
+    try:
+        p = subprocess.run(
+            ['bash', script],
+            cwd=ROOT_DIR,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            timeout=180,
+            check=False,
+        )
+        if p.returncode != 0:
+            # 2: dirty worktree, 4/5/6: misconfig
+            http = 409 if p.returncode == 2 else 500
+            return jsonify({
+                "success": False,
+                "error": f"pull data repo failed (exit {p.returncode})",
+                "output": p.stdout
+            }), http
+
+        return jsonify({
+            "success": True,
+            "output": p.stdout
+        })
+
+    except subprocess.TimeoutExpired:
+        return jsonify({
+            "success": False,
+            "error": "pull data repo timed out",
+        }), 504
+
+
 @app.route('/api/admin/merge-data-sync', methods=['POST'])
 def admin_merge_data_sync_to_main():
     ok, err = require_admin()
