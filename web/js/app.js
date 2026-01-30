@@ -30,6 +30,35 @@ const PRIORITY_LABELS = {
   'urgent': '紧急',
 }
 
+// ===== Theme Management =====
+function initTheme() {
+  const savedTheme = localStorage.getItem('theme') || 'light'
+  document.documentElement.setAttribute('data-theme', savedTheme)
+  updateThemeIcon(savedTheme)
+}
+
+function toggleTheme() {
+  const currentTheme = document.documentElement.getAttribute('data-theme') || 'light'
+  const newTheme = currentTheme === 'light' ? 'dark' : 'light'
+  document.documentElement.setAttribute('data-theme', newTheme)
+  localStorage.setItem('theme', newTheme)
+  updateThemeIcon(newTheme)
+}
+
+function updateThemeIcon(theme) {
+  const lightIcon = $('themeIconLight')
+  const darkIcon = $('themeIconDark')
+  if (lightIcon && darkIcon) {
+    if (theme === 'dark') {
+      lightIcon.style.display = 'none'
+      darkIcon.style.display = 'block'
+    } else {
+      lightIcon.style.display = 'block'
+      darkIcon.style.display = 'none'
+    }
+  }
+}
+
 function $(id) {
   return document.getElementById(id)
 }
@@ -291,16 +320,18 @@ function renderProjectsAsCards(displayProjects) {
     return sel
   }
 
-  displayProjects.forEach((p) => {
+  displayProjects.forEach((p, index) => {
     const card = document.createElement('div')
     card.className = 'project-card'
     card.setAttribute('data-id', p.id)
+    // Add stagger animation delay
+    card.style.animationDelay = `${index * 0.05}s`
 
     // Drag handle (only in manual sort mode)
     if (sortMode === 'manual') {
       const dragHandle = document.createElement('div')
       dragHandle.className = 'pm-drag-handle'
-      dragHandle.textContent = '⋮⋮'
+      dragHandle.innerHTML = '<svg class="icon icon-md" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="5" r="1"></circle><circle cx="9" cy="12" r="1"></circle><circle cx="9" cy="19" r="1"></circle><circle cx="15" cy="5" r="1"></circle><circle cx="15" cy="12" r="1"></circle><circle cx="15" cy="19" r="1"></circle></svg>'
       dragHandle.title = '拖动排序'
       dragHandle.draggable = true
       card.appendChild(dragHandle)
@@ -673,15 +704,19 @@ function renderProjectsAsList(displayProjects) {
     return sel
   }
 
-  displayProjects.forEach((p) => {
+  displayProjects.forEach((p, index) => {
     const tr = document.createElement('tr')
     tr.setAttribute('data-id', p.id)
+    // Add stagger animation delay
+    tr.style.animationDelay = `${index * 0.05}s`
 
     const dragTd = document.createElement('td')
     dragTd.className = 'pm-drag'
-    dragTd.textContent = sortMode === 'manual' ? '⋮⋮' : ''
-    dragTd.title = sortMode === 'manual' ? '拖动排序' : ''
-    if (sortMode === 'manual') dragTd.draggable = true
+    if (sortMode === 'manual') {
+      dragTd.innerHTML = '<svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="5" r="1"></circle><circle cx="9" cy="12" r="1"></circle><circle cx="9" cy="19" r="1"></circle><circle cx="15" cy="5" r="1"></circle><circle cx="15" cy="12" r="1"></circle><circle cx="15" cy="19" r="1"></circle></svg>'
+      dragTd.title = '拖动排序'
+      dragTd.draggable = true
+    }
     tr.appendChild(dragTd)
 
     const nameTd = document.createElement('td')
@@ -1455,6 +1490,9 @@ function setViewMode(mode) {
 window.setViewMode = setViewMode
 
 document.addEventListener('DOMContentLoaded', () => {
+  // Initialize theme
+  initTheme()
+  
   bindModalOverlayClose()
   bindProjectDetailInlineEdit()
   const sel = $('sortMode')

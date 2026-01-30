@@ -12,6 +12,22 @@
         <div class="container">
             <h1 class="logo">我的项目管理系统</h1>
             <div class="header-actions">
+                <button class="theme-toggle" onclick="toggleTheme()" title="切换主题" aria-label="切换深色/浅色主题">
+                    <svg id="themeIconLight" class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                    <svg id="themeIconDark" class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: none;">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                </button>
                 <button class="btn btn-secondary" onclick="showStats()">统计信息</button>
                 <button class="btn btn-secondary" onclick="openOpsModal()">运维</button>
                 <button class="btn btn-primary" onclick="showAddProjectModal()">添加项目</button>
@@ -56,10 +72,22 @@
                     <label>视图：</label>
                     <div class="view-toggle">
                         <button id="viewCardBtn" class="btn-view" onclick="setViewMode('card')" title="卡片视图">
-                            <span>🔲</span>
+                            <svg class="icon icon-md" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="3" width="7" height="7"></rect>
+                                <rect x="14" y="3" width="7" height="7"></rect>
+                                <rect x="14" y="14" width="7" height="7"></rect>
+                                <rect x="3" y="14" width="7" height="7"></rect>
+                            </svg>
                         </button>
                         <button id="viewListBtn" class="btn-view" onclick="setViewMode('list')" title="列表视图">
-                            <span>☰</span>
+                            <svg class="icon icon-md" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="8" y1="6" x2="21" y2="6"></line>
+                                <line x1="8" y1="12" x2="21" y2="12"></line>
+                                <line x1="8" y1="18" x2="21" y2="18"></line>
+                                <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                                <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                                <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                            </svg>
                         </button>
                     </div>
                 </div>
