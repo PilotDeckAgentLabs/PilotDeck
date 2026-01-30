@@ -1,0 +1,58 @@
+# -*- coding: utf-8 -*-
+"""Domain enumerations (project status, priority, etc.)."""
+
+from typing import List
+
+# Project status values
+PROJECT_STATUS_PLANNING = "planning"
+PROJECT_STATUS_IN_PROGRESS = "in-progress"
+PROJECT_STATUS_PAUSED = "paused"
+PROJECT_STATUS_COMPLETED = "completed"
+PROJECT_STATUS_CANCELLED = "cancelled"
+
+PROJECT_STATUSES: List[str] = [
+    PROJECT_STATUS_PLANNING,
+    PROJECT_STATUS_IN_PROGRESS,
+    PROJECT_STATUS_PAUSED,
+    PROJECT_STATUS_COMPLETED,
+    PROJECT_STATUS_CANCELLED,
+]
+
+# Project priority values
+PROJECT_PRIORITY_LOW = "low"
+PROJECT_PRIORITY_MEDIUM = "medium"
+PROJECT_PRIORITY_HIGH = "high"
+PROJECT_PRIORITY_URGENT = "urgent"
+
+PROJECT_PRIORITIES: List[str] = [
+    PROJECT_PRIORITY_LOW,
+    PROJECT_PRIORITY_MEDIUM,
+    PROJECT_PRIORITY_HIGH,
+    PROJECT_PRIORITY_URGENT,
+]
+
+# Agent run status values
+AGENT_RUN_STATUS_RUNNING = "running"
+AGENT_RUN_STATUS_SUCCESS = "success"
+AGENT_RUN_STATUS_FAILED = "failed"
+AGENT_RUN_STATUS_CANCELLED = "cancelled"
+
+AGENT_RUN_STATUSES: List[str] = [
+    AGENT_RUN_STATUS_RUNNING,
+    AGENT_RUN_STATUS_SUCCESS,
+    AGENT_RUN_STATUS_FAILED,
+    AGENT_RUN_STATUS_CANCELLED,
+]
+
+# Agent event levels
+EVENT_LEVEL_DEBUG = "debug"
+EVENT_LEVEL_INFO = "info"
+EVENT_LEVEL_WARN = "warn"
+EVENT_LEVEL_ERROR = "error"
+
+EVENT_LEVELS: List[str] = [
+    EVENT_LEVEL_DEBUG,
+    EVENT_LEVEL_INFO,
+    EVENT_LEVEL_WARN,
+    EVENT_LEVEL_ERROR,
+]
