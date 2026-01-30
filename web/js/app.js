@@ -1251,9 +1251,87 @@ function showProjectDetail(projectId) {
         <textarea class="pm-cell-input" rows="3" data-field="notes">${escapeHtml(notes)}</textarea>
       </div>
     </form>
+
+    <div class="stats-section">
+      <div class="agent-section-head">
+        <h3>Agent 时间线</h3>
+        <button class="btn btn-secondary btn-small" type="button" onclick="refreshAgentTimeline()">刷新</button>
+      </div>
+      <div id="agentRunsSummary" class="agent-empty" style="display:none;"></div>
+      <div id="agentTimeline" class="agent-timeline">
+        <div class="agent-empty">加载中...</div>
+      </div>
+    </div>
   `.trim()
 
   openModal('projectDetailModal')
+  // Load agent trace for this project (best-effort).
+  refreshAgentTimeline()
+}
+
+async function refreshAgentTimeline() {
+  const projectId = currentDetailProjectId
+  const timelineEl = $('agentTimeline')
+  const runsEl = $('agentRunsSummary')
+  if (!projectId || !timelineEl) return
+
+  timelineEl.innerHTML = '<div class="agent-empty">加载中...</div>'
+  if (runsEl) {
+    runsEl.style.display = 'none'
+    runsEl.textContent = ''
+  }
+
+  const q = `projectId=${encodeURIComponent(projectId)}`
+  try {
+    const [eventsRes, runsRes] = await Promise.all([
+      apiFetch(`/agent/events?${q}&limit=50`, { method: 'GET' }),
+      apiFetch(`/agent/runs?${q}&limit=3`, { method: 'GET' }),
+    ])
+
+    const events = (eventsRes && eventsRes.data) ? eventsRes.data : []
+    const runs = (runsRes && runsRes.data) ? runsRes.data : []
+
+    if (runsEl && Array.isArray(runs) && runs.length) {
+      const r = runs[0]
+      const title = escapeHtml(String(r.title || r.id || 'run'))
+      const st = escapeHtml(String(r.status || ''))
+      const at = escapeHtml(String(r.updatedAt || r.createdAt || ''))
+      runsEl.innerHTML = `最近 Run：<strong>${title}</strong> <span style="opacity:.8">(${st})</span> <span style="opacity:.7">${at}</span>`
+      runsEl.style.display = 'block'
+    }
+
+    if (!Array.isArray(events) || events.length === 0) {
+      timelineEl.innerHTML = '<div class="agent-empty">暂无记录（Agent 还未对该项目产生事件）</div>'
+      return
+    }
+
+    const items = events.slice().reverse().map((e) => {
+      const ts = String((e && e.ts) || '')
+      const d = ts ? new Date(ts) : null
+      const time = (d && !Number.isNaN(d.getTime())) ? d.toLocaleString('zh-CN') : ts
+      const typ = escapeHtml(String((e && e.type) || 'event'))
+      const lvl = String((e && e.level) || 'info')
+      const badgeCls = lvl === 'error' ? 'level-error' : (lvl === 'warn' ? 'level-warn' : '')
+      const agent = escapeHtml(String((e && e.agentId) || ''))
+      const title = escapeHtml(String((e && e.title) || ''))
+      const msg = escapeHtml(String((e && e.message) || ''))
+
+      const head = `<div class="agent-event-meta">
+        <span>${escapeHtml(time)}</span>
+        <span class="agent-event-badge ${badgeCls}">${typ}</span>
+        ${agent ? `<span>${agent}</span>` : ''}
+      </div>`
+
+      const body = `${title ? `<div class="agent-event-title">${title}</div>` : ''}
+        ${msg ? `<div class="agent-event-message">${msg}</div>` : ''}`
+
+      return `<div class="agent-event">${head}${body}</div>`
+    }).join('')
+
+    timelineEl.innerHTML = items
+  } catch (e) {
+    timelineEl.innerHTML = `<div class="agent-empty">加载失败：${escapeHtml(String(e && e.message ? e.message : e))}</div>`
+  }
 }
 
 function bindProjectDetailInlineEdit() {
@@ -1460,6 +1538,7 @@ window.applySortMode = applySortMode
 window.showStats = showStats
 window.closeStatsModal = closeStatsModal
 window.closeProjectDetailModal = closeProjectDetailModal
+window.refreshAgentTimeline = refreshAgentTimeline
 window.openOpsModal = openOpsModal
 window.closeOpsModal = closeOpsModal
 window.opsPushData = opsPushData
