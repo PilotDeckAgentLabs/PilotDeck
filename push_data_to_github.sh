@@ -56,11 +56,6 @@ else
   git switch -c "${BRANCH}" >/dev/null 2>&1 || git checkout -b "${BRANCH}"
 fi
 
-if git show-ref --verify --quiet "refs/remotes/${REMOTE_NAME}/${BRANCH}"; then
-  echo "[INFO] Rebasing ${BRANCH} onto ${REMOTE_NAME}/${BRANCH}..."
-  git pull --rebase "$REMOTE_NAME" "$BRANCH"
-fi
-
 if [[ "$MODE" == "all" ]]; then
   git add -A
 else
@@ -69,6 +64,11 @@ fi
 
 if git diff --cached --quiet; then
   echo "[INFO] Nothing to commit."
+  # Keep local up-to-date even if no new commit.
+  if git show-ref --verify --quiet "refs/remotes/${REMOTE_NAME}/${BRANCH}"; then
+    echo "[INFO] Rebasing ${BRANCH} onto ${REMOTE_NAME}/${BRANCH}..."
+    git rebase "${REMOTE_NAME}/${BRANCH}"
+  fi
   exit 0
 fi
 
@@ -79,6 +79,12 @@ fi
 
 echo "[INFO] Commit..."
 git commit -m "$MSG"
+
+# Ensure our new commit is on top of the latest remote base.
+if git show-ref --verify --quiet "refs/remotes/${REMOTE_NAME}/${BRANCH}"; then
+  echo "[INFO] Rebasing ${BRANCH} onto ${REMOTE_NAME}/${BRANCH}..."
+  git rebase "${REMOTE_NAME}/${BRANCH}"
+fi
 
 echo "[INFO] Push..."
 

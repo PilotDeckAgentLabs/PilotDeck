@@ -71,7 +71,9 @@ async function apiFetch(path, options = {}) {
 
   if (!res.ok) {
     const errMsg = (json && (json.error || json.message)) || `HTTP ${res.status}`
-    throw new Error(errMsg)
+    const outRaw = (json && json.output) ? String(json.output || '') : ''
+    const out = outRaw ? outRaw.split('\n').slice(-80).join('\n').trim() : ''
+    throw new Error(out ? `${errMsg}\n${out}` : errMsg)
   }
   return json
 }
