@@ -112,7 +112,9 @@ python3 -V
 脚本行为：
 - `git pull --rebase` 拉取最新代码
 - 使用 `${ROOT}/.venv` 创建虚拟环境并安装 `requirements.txt`
-- 若存在 systemd：自动写入/启用 `/etc/systemd/system/myprojectmanager.service` 并重启
+- 若存在 systemd：
+  - 自动写入/启用 `/etc/systemd/system/myprojectmanager.service` 并重启
+  - **自动设置每天定时备份数据到 GitHub**（幂等，无需手动操作）
 - 若无 systemd：使用 `nohup` 启动（日志写入 `server.log`，PID 写入 `.server.pid`）
 
 ### 3) 常用运维命令（systemd）
@@ -123,47 +125,55 @@ systemctl restart myprojectmanager
 journalctl -u myprojectmanager -f
 ```
 
-### 4) 设置自动数据备份（推荐）
+### 4) 自动数据备份
 
-为了防止数据丢失，建议设置每天自动将数据推送到 GitHub 数据仓库。
+**好消息**：从最新版本开始，`deploy_pull_restart.sh` 会**自动设置**每天定时备份！
 
-在服务器上执行（需要 root 权限）：
+当你运行 `./deploy_pull_restart.sh` 时，脚本会：
+- 自动安装 systemd timer（每天 0 点执行 `push_data_to_github.sh`）
+- 自动启用并启动定时器
+- 显示下次备份的时间
 
-```bash
-sudo ./setup_auto_backup.sh
-```
+**无需手动操作**，部署即自动开启数据保护。
 
-这将：
-- 安装 systemd timer，每天 0 点（午夜）自动执行 `push_data_to_github.sh`
-- 如果系统在触发时间关机，开机后会立即执行一次备份（`Persistent=true`）
-- 添加最多 30 分钟的随机延迟，避免集中负载
-
-**管理自动备份**：
+**管理自动备份**（可选）：
 
 ```bash
 # 查看定时器状态和下次运行时间
-sudo ./setup_auto_backup.sh status
+systemctl status myprojectmanager-backup.timer
+systemctl list-timers myprojectmanager-backup.timer
 
 # 查看备份日志
 journalctl -u myprojectmanager-backup.service -f
 
-# 禁用自动备份（可以重新启用）
-sudo ./setup_auto_backup.sh disable
-
-# 完全移除定时器
-sudo ./setup_auto_backup.sh remove
-```
-
-**手动测试备份**：
-
-```bash
-# 手动触发一次备份（不影响定时器）
+# 手动触发一次备份（测试）
 sudo systemctl start myprojectmanager-backup.service
 
-# 查看执行结果
-sudo systemctl status myprojectmanager-backup.service
-journalctl -u myprojectmanager-backup.service -n 50
+# 临时禁用自动备份
+sudo systemctl stop myprojectmanager-backup.timer
+sudo systemctl disable myprojectmanager-backup.timer
+
+# 重新启用（下次 deploy 也会自动启用）
+sudo systemctl enable myprojectmanager-backup.timer
+sudo systemctl start myprojectmanager-backup.timer
 ```
+
+**高级管理**（使用管理脚本）：
+
+**高级管理**（使用管理脚本）：
+
+```bash
+# 使用独立管理脚本（与 deploy 脚本效果相同）
+sudo ./setup_auto_backup.sh status   # 查看状态
+sudo ./setup_auto_backup.sh disable  # 禁用
+sudo ./setup_auto_backup.sh remove   # 完全移除
+```
+
+**备份特性**：
+- **触发时间**：每天 00:00（午夜）
+- **Persistent**：系统关机错过的备份会在下次启动时自动执行
+- **RandomizedDelay**：随机延迟最多 30 分钟，避免负载集中
+- **自动恢复**：每次运行 `deploy_pull_restart.sh` 都会确保定时器正常运行
 
 ### 5) 访问
 

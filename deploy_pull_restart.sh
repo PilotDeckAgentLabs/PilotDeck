@@ -107,6 +107,42 @@ EOF
   echo "[INFO] Restarting service..."
   systemctl restart "$SERVICE_NAME"
   systemctl --no-pager --full status "$SERVICE_NAME" | sed -n '1,20p' || true
+
+  # Setup automatic daily data backup (idempotent)
+  echo "[INFO] Setting up automatic daily data backup..."
+  BACKUP_SERVICE_FILE="/etc/systemd/system/myprojectmanager-backup.service"
+  BACKUP_TIMER_FILE="/etc/systemd/system/myprojectmanager-backup.timer"
+  
+  # Install backup service if not exists or if changed
+  if [[ ! -f "$BACKUP_SERVICE_FILE" ]] || ! cmp -s "$ROOT_DIR/myprojectmanager-backup.service" "$BACKUP_SERVICE_FILE"; then
+    echo "[INFO] Installing backup service: $BACKUP_SERVICE_FILE"
+    cp -f "$ROOT_DIR/myprojectmanager-backup.service" "$BACKUP_SERVICE_FILE"
+    systemctl daemon-reload
+  fi
+  
+  # Install backup timer if not exists or if changed
+  if [[ ! -f "$BACKUP_TIMER_FILE" ]] || ! cmp -s "$ROOT_DIR/myprojectmanager-backup.timer" "$BACKUP_TIMER_FILE"; then
+    echo "[INFO] Installing backup timer: $BACKUP_TIMER_FILE"
+    cp -f "$ROOT_DIR/myprojectmanager-backup.timer" "$BACKUP_TIMER_FILE"
+    systemctl daemon-reload
+  fi
+  
+  # Enable and start timer (idempotent)
+  if ! systemctl is-enabled myprojectmanager-backup.timer >/dev/null 2>&1; then
+    echo "[INFO] Enabling backup timer..."
+    systemctl enable myprojectmanager-backup.timer
+  fi
+  
+  if ! systemctl is-active myprojectmanager-backup.timer >/dev/null 2>&1; then
+    echo "[INFO] Starting backup timer..."
+    systemctl start myprojectmanager-backup.timer
+  fi
+  
+  echo "[INFO] Backup timer status:"
+  systemctl --no-pager status myprojectmanager-backup.timer | sed -n '1,10p' || true
+  echo "[INFO] Next scheduled backup:"
+  systemctl list-timers myprojectmanager-backup.timer --no-pager --no-legend || true
+  
 else
   echo "[WARN] systemctl not found. Falling back to nohup mode."
   PID_FILE="$ROOT_DIR/.server.pid"
