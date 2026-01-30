@@ -106,7 +106,18 @@ python3 -V
 在服务器仓库根目录执行：
 
 ```bash
-./deploy_pull_restart.sh
+# 方式 A：直接运行 deploy 脚本（推荐）
+sudo ./deploy_pull_restart.sh
+
+# 方式 B：从前端触发（Web UI 管理界面）
+# 点击 "部署：拉取更新并重启" 按钮
+# 注意：前端触发需要后续手动设置自动备份（仅首次）
+```
+
+**重要**：首次部署或前端触发部署后，需要**手动设置自动备份**（仅一次）：
+
+```bash
+sudo ./setup_auto_backup.sh
 ```
 
 脚本行为：
@@ -114,7 +125,8 @@ python3 -V
 - 使用 `${ROOT}/.venv` 创建虚拟环境并安装 `requirements.txt`
 - 若存在 systemd：
   - 自动写入/启用 `/etc/systemd/system/myprojectmanager.service` 并重启
-  - **自动设置每天定时备份数据到 GitHub**（幂等，无需手动操作）
+  - **使用 sudo 运行时**：自动设置每天定时备份数据到 GitHub（幂等）
+  - **前端触发或非 root 运行时**：提示手动运行 `setup_auto_backup.sh`
 - 若无 systemd：使用 `nohup` 启动（日志写入 `server.log`，PID 写入 `.server.pid`）
 
 ### 3) 常用运维命令（systemd）
@@ -125,18 +137,43 @@ systemctl restart myprojectmanager
 journalctl -u myprojectmanager -f
 ```
 
-### 4) 自动数据备份
+### 4) 自动数据备份（重要）
 
-**好消息**：从最新版本开始，`deploy_pull_restart.sh` 会**自动设置**每天定时备份！
+#### 首次设置（仅需一次）
 
-当你运行 `./deploy_pull_restart.sh` 时，脚本会：
-- 自动安装 systemd timer（每天 0 点执行 `push_data_to_github.sh`）
+在服务器上以 **root 权限**运行：
+
+```bash
+sudo ./setup_auto_backup.sh
+```
+
+这将：
+- 安装 systemd timer（每天 0 点执行 `push_data_to_github.sh`）
 - 自动启用并启动定时器
-- 显示下次备份的时间
+- 显示下次备份时间
 
-**无需手动操作**，部署即自动开启数据保护。
+**为什么需要手动运行一次**？
+- 定时器需要安装到 `/etc/systemd/system/`，需要 root 权限
+- 前端触发的部署运行在普通用户权限下，无法自动安装
+- **运行一次后永久生效**，后续部署会自动保持定时器运行
 
-**管理自动备份**（可选）：
+#### 验证安装成功
+
+```bash
+# 查看定时器状态
+systemctl status myprojectmanager-backup.timer
+
+# 查看下次运行时间
+systemctl list-timers myprojectmanager-backup.timer
+```
+
+预期输出：
+```
+NEXT                          LEFT        LAST  PASSED  UNIT                           ACTIVATES
+Sat 2026-01-31 00:00:00 CST   3h 27min left  -     -     myprojectmanager-backup.timer  myprojectmanager-backup.service
+```
+
+#### 管理自动备份（可选）
 
 ```bash
 # 查看定时器状态和下次运行时间

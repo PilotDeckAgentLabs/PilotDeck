@@ -113,35 +113,52 @@ EOF
   BACKUP_SERVICE_FILE="/etc/systemd/system/myprojectmanager-backup.service"
   BACKUP_TIMER_FILE="/etc/systemd/system/myprojectmanager-backup.timer"
   
-  # Install backup service if not exists or if changed
-  if [[ ! -f "$BACKUP_SERVICE_FILE" ]] || ! cmp -s "$ROOT_DIR/myprojectmanager-backup.service" "$BACKUP_SERVICE_FILE"; then
-    echo "[INFO] Installing backup service: $BACKUP_SERVICE_FILE"
-    cp -f "$ROOT_DIR/myprojectmanager-backup.service" "$BACKUP_SERVICE_FILE"
-    systemctl daemon-reload
+  # Check if we have write permission to /etc/systemd/system/
+  if [[ ! -w "/etc/systemd/system" ]]; then
+    echo "[WARN] No write permission to /etc/systemd/system. Skipping automatic backup setup."
+    echo "[HINT] Run manually with root: sudo $ROOT_DIR/setup_auto_backup.sh"
+  else
+    # Install backup service if not exists or if changed
+    if [[ ! -f "$BACKUP_SERVICE_FILE" ]] || ! cmp -s "$ROOT_DIR/myprojectmanager-backup.service" "$BACKUP_SERVICE_FILE"; then
+      echo "[INFO] Installing backup service: $BACKUP_SERVICE_FILE"
+      if cp -f "$ROOT_DIR/myprojectmanager-backup.service" "$BACKUP_SERVICE_FILE" 2>/dev/null; then
+        systemctl daemon-reload
+      else
+        echo "[ERROR] Failed to copy backup service. Need root permission."
+      fi
+    fi
+    
+    # Install backup timer if not exists or if changed
+    if [[ ! -f "$BACKUP_TIMER_FILE" ]] || ! cmp -s "$ROOT_DIR/myprojectmanager-backup.timer" "$BACKUP_TIMER_FILE"; then
+      echo "[INFO] Installing backup timer: $BACKUP_TIMER_FILE"
+      if cp -f "$ROOT_DIR/myprojectmanager-backup.timer" "$BACKUP_TIMER_FILE" 2>/dev/null; then
+        systemctl daemon-reload
+      else
+        echo "[ERROR] Failed to copy backup timer. Need root permission."
+      fi
+    fi
+    
+    # Enable and start timer (idempotent)
+    if ! systemctl is-enabled myprojectmanager-backup.timer >/dev/null 2>&1; then
+      echo "[INFO] Enabling backup timer..."
+      systemctl enable myprojectmanager-backup.timer 2>/dev/null || echo "[WARN] Failed to enable timer. Need root permission."
+    fi
+    
+    if ! systemctl is-active myprojectmanager-backup.timer >/dev/null 2>&1; then
+      echo "[INFO] Starting backup timer..."
+      systemctl start myprojectmanager-backup.timer 2>/dev/null || echo "[WARN] Failed to start timer. Need root permission."
+    fi
+    
+    # Show status if timer exists
+    if systemctl list-unit-files myprojectmanager-backup.timer >/dev/null 2>&1; then
+      echo "[INFO] Backup timer status:"
+      systemctl --no-pager status myprojectmanager-backup.timer 2>/dev/null | sed -n '1,10p' || true
+      echo "[INFO] Next scheduled backup:"
+      systemctl list-timers myprojectmanager-backup.timer --no-pager --no-legend 2>/dev/null || true
+    else
+      echo "[WARN] Backup timer not installed. Run manually: sudo $ROOT_DIR/setup_auto_backup.sh"
+    fi
   fi
-  
-  # Install backup timer if not exists or if changed
-  if [[ ! -f "$BACKUP_TIMER_FILE" ]] || ! cmp -s "$ROOT_DIR/myprojectmanager-backup.timer" "$BACKUP_TIMER_FILE"; then
-    echo "[INFO] Installing backup timer: $BACKUP_TIMER_FILE"
-    cp -f "$ROOT_DIR/myprojectmanager-backup.timer" "$BACKUP_TIMER_FILE"
-    systemctl daemon-reload
-  fi
-  
-  # Enable and start timer (idempotent)
-  if ! systemctl is-enabled myprojectmanager-backup.timer >/dev/null 2>&1; then
-    echo "[INFO] Enabling backup timer..."
-    systemctl enable myprojectmanager-backup.timer
-  fi
-  
-  if ! systemctl is-active myprojectmanager-backup.timer >/dev/null 2>&1; then
-    echo "[INFO] Starting backup timer..."
-    systemctl start myprojectmanager-backup.timer
-  fi
-  
-  echo "[INFO] Backup timer status:"
-  systemctl --no-pager status myprojectmanager-backup.timer | sed -n '1,10p' || true
-  echo "[INFO] Next scheduled backup:"
-  systemctl list-timers myprojectmanager-backup.timer --no-pager --no-legend || true
   
 else
   echo "[WARN] systemctl not found. Falling back to nohup mode."
