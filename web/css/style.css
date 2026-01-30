@@ -154,6 +154,34 @@ code {
     outline: none;
 }
 
+/* ===== 视图切换按钮 ===== */
+.view-toggle {
+    display: flex;
+    gap: 4px;
+}
+
+.btn-view {
+    padding: 8px 12px;
+    border: 1px solid var(--border-color);
+    background: white;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: all 0.2s;
+    font-size: 16px;
+    line-height: 1;
+}
+
+.btn-view:hover:not(.active) {
+    border-color: var(--primary-color);
+    background: #f8fafc;
+}
+
+.btn-view.active {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+
 /* ===== 项目卡片网格 ===== */
 .projects-table {
     background-color: var(--card-bg);
@@ -222,6 +250,20 @@ code {
     user-select: none;
     text-align: center;
     font-weight: 700;
+    opacity: 0.4;
+    transition: opacity 0.2s;
+}
+
+.pm-drag:hover {
+    opacity: 1;
+}
+
+.pm-table tbody tr:hover .pm-drag {
+    opacity: 0.7;
+}
+
+.pm-drag:active {
+    cursor: grabbing;
 }
 
 .pm-dragging {
@@ -256,20 +298,119 @@ code {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
     gap: 24px;
+    padding: 20px;
 }
 
 .project-card {
+    position: relative;
     background-color: var(--card-bg);
     border-radius: 12px;
     box-shadow: var(--shadow);
     padding: 24px;
     transition: all 0.3s ease;
-    cursor: pointer;
 }
 
 .project-card:hover {
     transform: translateY(-4px);
     box-shadow: var(--shadow-hover);
+}
+
+.project-card.pm-dragging {
+    opacity: 0.6;
+    cursor: grabbing;
+}
+
+/* Drag handle for cards */
+.pm-drag-handle {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    width: 24px;
+    height: 24px;
+    color: var(--text-secondary);
+    cursor: grab;
+    user-select: none;
+    text-align: center;
+    font-weight: 700;
+    font-size: 14px;
+    line-height: 24px;
+    opacity: 0.4;
+    transition: opacity 0.2s;
+}
+
+.pm-drag-handle:hover {
+    opacity: 1;
+}
+
+.project-card:hover .pm-drag-handle {
+    opacity: 0.7;
+}
+
+.pm-drag-handle:active {
+    cursor: grabbing;
+}
+
+.card-header {
+    margin-bottom: 16px;
+    padding-left: 28px; /* Space for drag handle */
+}
+
+.card-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 12px 0;
+}
+
+.card-meta {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+}
+
+.card-progress {
+    margin-bottom: 16px;
+}
+
+.card-finance {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    padding: 12px;
+    background-color: #f8fafc;
+    border-radius: 8px;
+}
+
+.finance-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.finance-label {
+    font-size: 12px;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.finance-value {
+    font-size: 16px;
+    color: var(--text-primary);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
+.card-actions {
+    display: flex;
+    gap: 8px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border-color);
+}
+
+.card-actions .btn {
+    flex: 1;
+    justify-content: center;
 }
 
 .project-header {
@@ -302,6 +443,12 @@ code {
 .badge-completed { background-color: #d1fae5; color: #065f46; }
 .badge-cancelled { background-color: #fee2e2; color: #991b1b; }
 
+.badge-priority-low { background-color: #f1f5f9; color: #475569; }
+.badge-priority-medium { background-color: #dbeafe; color: #1e40af; }
+.badge-priority-high { background-color: #fed7aa; color: #c2410c; }
+.badge-priority-urgent { background-color: #fecaca; color: #991b1b; }
+
+/* Legacy badge classes for backward compatibility */
 .badge-low { background-color: #f1f5f9; color: #475569; }
 .badge-medium { background-color: #dbeafe; color: #1e40af; }
 .badge-high { background-color: #fed7aa; color: #c2410c; }

@@ -5,6 +5,7 @@ const API_BASE_URL = '/api'
 
 let currentProjects = []
 let sortMode = 'manual'
+let viewMode = localStorage.getItem('viewMode') || 'card' // 'card' or 'list'
 let currentDetailProjectId = null
 let opsLogTimer = null
 let opsLastLogText = ''
@@ -249,6 +250,201 @@ async function updateProjectPartial(projectId, patch) {
   if (idx >= 0) currentProjects[idx] = updated
 }
 
+// Helper function to get status label in Chinese
+function getStatusLabel(status) {
+  const map = {
+    'planning': '计划中',
+    'in-progress': '进行中',
+    'paused': '暂停',
+    'completed': '已完成',
+    'cancelled': '已取消',
+  }
+  return map[status] || '计划中'
+}
+
+// Helper function to get priority label in Chinese
+function getPriorityLabel(priority) {
+  const map = {
+    'low': '低',
+    'medium': '中',
+    'high': '高',
+    'urgent': '紧急',
+  }
+  return map[priority] || '中'
+}
+
+function renderProjectsAsCards(displayProjects) {
+  const list = $('projectsList')
+  const grid = document.createElement('div')
+  grid.className = 'projects-grid'
+
+  displayProjects.forEach((p) => {
+    const card = document.createElement('div')
+    card.className = 'project-card'
+    card.setAttribute('data-id', p.id)
+
+    // Drag handle (only in manual sort mode)
+    if (sortMode === 'manual') {
+      const dragHandle = document.createElement('div')
+      dragHandle.className = 'pm-drag-handle'
+      dragHandle.textContent = '⋮⋮'
+      dragHandle.title = '拖动排序'
+      dragHandle.draggable = true
+      card.appendChild(dragHandle)
+    }
+
+    // Card header with name
+    const cardHeader = document.createElement('div')
+    cardHeader.className = 'card-header'
+    const cardTitle = document.createElement('h3')
+    cardTitle.className = 'card-title'
+    cardTitle.textContent = p.name || '未命名项目'
+    cardHeader.appendChild(cardTitle)
+    card.appendChild(cardHeader)
+
+    // Status and priority badges
+    const cardMeta = document.createElement('div')
+    cardMeta.className = 'card-meta'
+    
+    const statusBadge = document.createElement('span')
+    statusBadge.className = `badge badge-${p.status || 'planning'}`
+    statusBadge.textContent = getStatusLabel(p.status)
+    cardMeta.appendChild(statusBadge)
+
+    const priorityBadge = document.createElement('span')
+    priorityBadge.className = `badge badge-priority-${p.priority || 'medium'}`
+    priorityBadge.textContent = getPriorityLabel(p.priority)
+    cardMeta.appendChild(priorityBadge)
+    
+    card.appendChild(cardMeta)
+
+    // Progress bar
+    const progressSection = document.createElement('div')
+    progressSection.className = 'card-progress'
+    const progressLabel = document.createElement('div')
+    progressLabel.className = 'progress-label'
+    progressLabel.textContent = `进度: ${p.progress || 0}%`
+    progressSection.appendChild(progressLabel)
+    
+    const progressBar = document.createElement('div')
+    progressBar.className = 'progress-bar'
+    const progressFill = document.createElement('div')
+    progressFill.className = 'progress-fill'
+    progressFill.style.width = `${p.progress || 0}%`
+    progressBar.appendChild(progressFill)
+    progressSection.appendChild(progressBar)
+    card.appendChild(progressSection)
+
+    // Cost and revenue
+    const cardFinance = document.createElement('div')
+    cardFinance.className = 'card-finance'
+    const costDiv = document.createElement('div')
+    costDiv.className = 'finance-item'
+    costDiv.innerHTML = `<span class="finance-label">成本:</span> <span class="finance-value">¥${getCostTotal(p).toFixed(2)}</span>`
+    const revenueDiv = document.createElement('div')
+    revenueDiv.className = 'finance-item'
+    revenueDiv.innerHTML = `<span class="finance-label">收入:</span> <span class="finance-value">¥${getRevenueTotal(p).toFixed(2)}</span>`
+    cardFinance.appendChild(costDiv)
+    cardFinance.appendChild(revenueDiv)
+    card.appendChild(cardFinance)
+
+    // Action buttons
+    const cardActions = document.createElement('div')
+    cardActions.className = 'card-actions'
+    const detailBtn = document.createElement('button')
+    detailBtn.className = 'btn btn-secondary btn-small'
+    detailBtn.type = 'button'
+    detailBtn.textContent = '详情'
+    detailBtn.setAttribute('data-action', 'detail')
+    const delBtn = document.createElement('button')
+    delBtn.className = 'btn btn-danger btn-small'
+    delBtn.type = 'button'
+    delBtn.textContent = '删除'
+    delBtn.setAttribute('data-action', 'delete')
+    cardActions.appendChild(detailBtn)
+    cardActions.appendChild(delBtn)
+    card.appendChild(cardActions)
+
+    grid.appendChild(card)
+  })
+
+  list.appendChild(grid)
+
+  // Event handlers for card actions
+  grid.addEventListener('click', (e) => {
+    const btn = e.target && e.target.closest && e.target.closest('button[data-action]')
+    if (!btn) return
+    const card = btn.closest('.project-card[data-id]')
+    if (!card) return
+    const id = card.getAttribute('data-id')
+    const action = btn.getAttribute('data-action')
+    if (action === 'detail') {
+      e.preventDefault()
+      e.stopPropagation()
+      showProjectDetail(id)
+    } else if (action === 'delete') {
+      e.preventDefault()
+      e.stopPropagation()
+      deleteProject(id)
+    }
+  })
+
+  // Drag & drop for cards (manual mode only)
+  if (sortMode === 'manual') {
+    let draggedId = null
+    
+    grid.addEventListener('dragstart', (e) => {
+      const dragHandle = e.target && e.target.closest && e.target.closest('.pm-drag-handle')
+      if (!dragHandle) {
+        e.preventDefault()
+        return
+      }
+      const card = dragHandle.closest('.project-card[data-id]')
+      if (!card) return
+      draggedId = card.getAttribute('data-id')
+      card.classList.add('pm-dragging')
+      if (e.dataTransfer) {
+        e.dataTransfer.effectAllowed = 'move'
+        e.dataTransfer.setData('text/plain', draggedId)
+      }
+    })
+
+    grid.addEventListener('dragend', (e) => {
+      const card = e.target && e.target.closest && e.target.closest('.project-card[data-id]')
+      if (card) card.classList.remove('pm-dragging')
+      draggedId = null
+    })
+
+    grid.addEventListener('dragover', (e) => {
+      if (!draggedId) return
+      e.preventDefault()
+      const over = e.target && e.target.closest && e.target.closest('.project-card[data-id]')
+      const dragging = draggedId ? grid.querySelector(`.project-card[data-id="${CSS.escape(draggedId)}"]`) : null
+      if (!over || !dragging || over === dragging) return
+      const rect = over.getBoundingClientRect()
+      const beforeX = e.clientX < rect.left + rect.width / 2
+      grid.insertBefore(dragging, beforeX ? over : over.nextSibling)
+    })
+
+    grid.addEventListener('drop', async (e) => {
+      if (!draggedId) return
+      e.preventDefault()
+      const ids = Array.from(grid.querySelectorAll('.project-card[data-id]')).map(c => c.getAttribute('data-id'))
+      try {
+        const res = await apiFetch('/projects/reorder', {
+          method: 'POST',
+          body: JSON.stringify({ ids }),
+        })
+        currentProjects = (res && res.data) || currentProjects
+        renderProjects(currentProjects)
+      } catch (err) {
+        showToast(`排序保存失败: ${err.message}`, 'error')
+        await loadProjects()
+      }
+    })
+  }
+}
+
 function renderProjects(projects) {
   const list = $('projectsList')
   list.innerHTML = ''
@@ -270,6 +466,16 @@ function renderProjects(projects) {
     })
   }
 
+  // Dispatch to appropriate renderer based on view mode
+  if (viewMode === 'card') {
+    renderProjectsAsCards(displayProjects)
+  } else {
+    renderProjectsAsList(displayProjects)
+  }
+}
+
+function renderProjectsAsList(displayProjects) {
+  const list = $('projectsList')
   const table = document.createElement('table')
   table.className = 'pm-table'
 
@@ -306,12 +512,12 @@ function renderProjects(projects) {
   displayProjects.forEach((p) => {
     const tr = document.createElement('tr')
     tr.setAttribute('data-id', p.id)
-    if (sortMode === 'manual') tr.draggable = true
 
     const dragTd = document.createElement('td')
     dragTd.className = 'pm-drag'
     dragTd.textContent = sortMode === 'manual' ? '⋮⋮' : ''
     dragTd.title = sortMode === 'manual' ? '拖动排序' : ''
+    if (sortMode === 'manual') dragTd.draggable = true
     tr.appendChild(dragTd)
 
     const nameTd = document.createElement('td')
@@ -514,7 +720,13 @@ function renderProjects(projects) {
   let draggedId = null
   tbody.addEventListener('dragstart', (e) => {
     if (sortMode !== 'manual') return
-    const tr = e.target && e.target.closest && e.target.closest('tr[data-id]')
+    // Only allow drag from handle
+    const dragHandle = e.target && e.target.closest && e.target.closest('.pm-drag')
+    if (!dragHandle) {
+      e.preventDefault()
+      return
+    }
+    const tr = dragHandle.closest('tr[data-id]')
     if (!tr) return
     draggedId = tr.getAttribute('data-id')
     tr.classList.add('pm-dragging')
@@ -1058,10 +1270,39 @@ window.opsFetchDeployLog = opsFetchDeployLog
 window.opsStartDeployLog = opsStartDeployLog
 window.opsStopDeployLog = opsStopDeployLog
 
+// View mode switching
+function setViewMode(mode) {
+  if (mode !== 'card' && mode !== 'list') return
+  viewMode = mode
+  localStorage.setItem('viewMode', mode)
+  
+  // Update button states
+  const cardBtn = $('viewCardBtn')
+  const listBtn = $('viewListBtn')
+  if (cardBtn && listBtn) {
+    cardBtn.classList.toggle('active', mode === 'card')
+    listBtn.classList.toggle('active', mode === 'list')
+  }
+  
+  // Re-render with new view mode
+  renderProjects(currentProjects)
+}
+
+window.setViewMode = setViewMode
+
 document.addEventListener('DOMContentLoaded', () => {
   bindModalOverlayClose()
   bindProjectDetailInlineEdit()
   const sel = $('sortMode')
   sortMode = (sel && sel.value) ? sel.value : 'manual'
+  
+  // Initialize view mode buttons
+  const cardBtn = $('viewCardBtn')
+  const listBtn = $('viewListBtn')
+  if (cardBtn && listBtn) {
+    cardBtn.classList.toggle('active', viewMode === 'card')
+    listBtn.classList.toggle('active', viewMode === 'list')
+  }
+  
   loadProjects()
 })
