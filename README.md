@@ -1,7 +1,7 @@
 # MyProjectManager
 
 一个基于 GitHub 仓库的“个人项目统一管理”Demo：
-- 项目数据以 `JSON` 文件形式存储在仓库里（便于版本管理、审计、回滚）
+- 项目数据以 `JSON` 文件形式存储在独立的数据仓库（便于版本管理、审计、回滚，也方便未来开源）
 - 提供 Python CLI 脚本做数据管理（可选）
 - 提供 Flask 后端 API + 原生 Web 前端，实现项目的增删改查与统计展示
 
@@ -14,6 +14,7 @@
 
 ## 目录结构
 
+- `data/`：数据仓库的工作目录（独立 Git 仓库，已在代码仓库中忽略）
 - `data/projects.json`：项目数据（你日常维护的核心）
 - `data/schema.json`：数据结构 JSON Schema（用于约束字段含义/结构）
 - `scripts/project_manager.py`：CLI 数据管理脚本（增删改查/统计）
@@ -29,6 +30,16 @@
 说明：本项目依赖（`requirements.txt`）要求 Python 3.8+。Linux 服务器上推荐使用 `/usr/local/bin/python3` 指向 Python 3.8+，避免改动 `/usr/bin/python`（可能影响 yum / 系统脚本）。
 
 ## 快速开始（本地运行）
+
+### 0) 准备数据仓库（一次性）
+
+本项目将 `data/` 作为“数据仓库”的工作目录（独立 Git 仓库，已在代码仓库中忽略）。
+
+在代码仓库根目录执行（示例）：
+
+```bash
+git clone <your-data-repo-url> data
+```
 
 ### 1) 安装依赖
 
@@ -72,7 +83,7 @@ start_server.ps1
 仓库内已提供两条适合在服务器上执行的脚本：
 
 1) 从 GitHub 拉取更新并部署、重启：`deploy_pull_restart.sh`
-2) 将本地修改（默认仅数据）推送到 GitHub：`push_data_to_github.sh`
+2) 将数据仓库的本地修改推送到 GitHub：`push_data_to_github.sh`
 
 脚本说明见脚本文件头部注释。
 
@@ -155,5 +166,5 @@ python scripts/project_manager.py update proj-001 --progress 50 --status in-prog
 
 ## 数据维护建议
 
-- 你可以直接编辑 `data/projects.json`（JSON），并通过 Git 提交记录每次变更
+- 你可以直接编辑 `data/projects.json`（JSON），并在 `data/` 目录内通过 Git 提交记录每次变更
 - 如果多人协作：建议以 PR 的方式合并数据变更，避免冲突

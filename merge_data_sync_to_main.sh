@@ -1,10 +1,16 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Merge data-sync branch into main and push.
-# If merge conflicts occur, the merge is aborted and you must resolve manually.
+# DEPRECATED (2026-01): data is now stored in a separate repo under ./data.
+# This legacy script previously merged data-sync into the code repo main branch.
+# It is intentionally kept to avoid breaking old setups, but should no longer be used.
+#
 # Usage:
 #   ./merge_data_sync_to_main.sh
+
+echo "[ERROR] Deprecated: data repo separated under ./data."
+echo "[HINT] Use ./push_data_to_github.sh to push data repo changes instead."
+exit 10
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$ROOT_DIR"

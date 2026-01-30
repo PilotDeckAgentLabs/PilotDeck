@@ -534,55 +534,13 @@ def admin_merge_data_sync_to_main():
     if not ok:
         return err
 
-    if os.name != 'posix':
-        return jsonify({
-            "success": False,
-            "error": "This endpoint requires Linux (bash + git)."
-        }), 400
+    # Data is stored in a separate repository under ./data.
+    # The legacy workflow (data-sync -> merge into main) no longer applies.
+    return jsonify({
+        "success": False,
+        "error": "Deprecated: data repo is separated (./data). 'merge-data-sync' no longer applies.",
+    }), 410
 
-    script = os.path.join(ROOT_DIR, 'merge_data_sync_to_main.sh')
-    if not os.path.exists(script):
-        return jsonify({
-            "success": False,
-            "error": "merge_data_sync_to_main.sh not found"
-        }), 500
-
-    try:
-        p = subprocess.run(
-            ['bash', script],
-            cwd=ROOT_DIR,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-            timeout=180,
-            check=False,
-        )
-
-        if p.returncode == 0:
-            return jsonify({
-                "success": True,
-                "output": p.stdout
-            })
-
-        # 2: dirty worktree, 3: conflict, 4: missing data branch
-        if p.returncode in (2, 3, 4):
-            return jsonify({
-                "success": False,
-                "error": f"merge refused (exit {p.returncode})",
-                "output": p.stdout
-            }), 409
-
-        return jsonify({
-            "success": False,
-            "error": f"merge failed (exit {p.returncode})",
-            "output": p.stdout
-        }), 500
-
-    except subprocess.TimeoutExpired:
-        return jsonify({
-            "success": False,
-            "error": "merge timed out",
-        }), 504
 
 
 @app.route('/api/admin/deploy', methods=['POST'])

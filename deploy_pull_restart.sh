@@ -42,12 +42,11 @@ echo "[INFO] Repo: $ROOT_DIR"
 echo "[INFO] Pulling latest..."
 
 # git pull --rebase requires a clean working tree.
-# This repo intentionally tracks data/projects.json, so if you edited data on the server,
-# push it first (or commit/stash manually) before pulling code updates.
+# NOTE: data is stored in a separate repo under ./data (ignored by this code repo),
+# so data changes will NOT block code deploys.
 if ! git diff --quiet || ! git diff --cached --quiet; then
   echo "[ERROR] Working tree has local changes; cannot pull with rebase."
-  echo "[HINT] If you edited data on the server, use the Ops button 'Push 数据到 GitHub' first."
-  echo "[HINT] Or commit/stash your changes on the server, then retry."
+  echo "[HINT] Commit/stash your local code changes on the server, then retry."
   git status --porcelain || true
   exit 2
 fi

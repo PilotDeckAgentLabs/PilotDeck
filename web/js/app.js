@@ -641,7 +641,7 @@ function opsStartDeployLog() {
         let hint = '部署完成：失败。请查看日志末尾的错误信息。'
         const log = String(opsLastLogText || '')
         if (log.includes('cannot pull with rebase') || log.includes('You have unstaged changes')) {
-          hint = '部署失败：服务器仓库有未提交修改，无法 git pull --rebase。建议先执行“Push 数据到 GitHub”或在服务器上提交/暂存后再试。'
+          hint = '部署失败：服务器代码仓库有未提交修改，无法 git pull --rebase。请先在服务器上提交/暂存这些代码修改后再试。'
         }
         setOpsDeployStatus('failed', hint)
         appendOpsOutput('\n[ERROR] Deploy status: failed\n')
@@ -694,7 +694,7 @@ function opsStopDeployLog() {
 
 async function opsPushData() {
   try {
-    setOpsOutput('[INFO] Pushing data/projects.json to GitHub...\n')
+    setOpsOutput('[INFO] Pushing data repo changes to GitHub...\n')
     const res = await opsFetch('/admin/push', {
       method: 'POST',
       body: JSON.stringify({ mode: 'data-only' }),
@@ -703,23 +703,6 @@ async function opsPushData() {
   } catch (e) {
     appendOpsOutput(`[ERROR] ${e.message}\n`)
     showToast(e.message, 'error')
-  }
-}
-
-async function opsMergeDataSyncToMain() {
-  try {
-    setOpsOutput('[INFO] Merging origin/data-sync into origin/main...\n')
-    const res = await opsFetch('/admin/merge-data-sync', { method: 'POST' })
-    appendOpsOutput((res && res.output) ? `${res.output}\n` : '[INFO] Done.\n')
-    showToast('合并完成（已推送 main）', 'success')
-  } catch (e) {
-    const msg = String(e && e.message ? e.message : '')
-    appendOpsOutput(`[ERROR] ${msg}\n`)
-    if (msg.startsWith('HTTP 409')) {
-      showToast('自动合并被拒绝（可能有冲突/本地修改），请查看日志', 'error')
-    } else {
-      showToast(msg || '合并失败', 'error')
-    }
   }
 }
 
@@ -1044,7 +1027,6 @@ window.openOpsModal = openOpsModal
 window.closeOpsModal = closeOpsModal
 window.opsPushData = opsPushData
 window.opsPullRestart = opsPullRestart
-window.opsMergeDataSyncToMain = opsMergeDataSyncToMain
 window.opsFetchDeployLog = opsFetchDeployLog
 window.opsStartDeployLog = opsStartDeployLog
 window.opsStopDeployLog = opsStopDeployLog
