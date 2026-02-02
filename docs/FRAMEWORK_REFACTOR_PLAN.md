@@ -145,38 +145,65 @@ frontend/
 
 ## Staged Migration Plan
 
-### Phase 0: Safety Baseline (1-2 sessions)
+### Phase 0: Safety Baseline (1-2 sessions) ✅ COMPLETE
 
-- Add a dedicated architecture doc (this file) and keep it updated.
-- Add minimal smoke tests for critical API endpoints.
-- Introduce consistent formatting + linting (Python + TS) before heavy refactors.
+- ✅ Add a dedicated architecture doc (this file) and keep it updated.
+- ⏭️ Add minimal smoke tests for critical API endpoints (deferred).
+- ⏭️ Introduce consistent formatting + linting (Python + TS) before heavy refactors (deferred).
 
 Deliverable:
-- Documented plan + minimal verification commands.
+- ✅ Documented plan + minimal verification commands.
 
-### Phase 1: Backend Refactor Without Framework Switch (Flask stays) (2-5 sessions)
+### Phase 1: Backend Refactor Without Framework Switch (Flask stays) ✅ COMPLETE
 
-- Split `server/api_server.py` into modules (Blueprints) by domain.
-- Extract business logic into `services/`.
-- Extract persistence into `storage/` with interfaces.
-- Ensure atomic writes + file locks are consistently applied.
+- ✅ Split `server/api_server.py` into modules (Blueprints) by domain.
+- ✅ Extract business logic into `services/`.
+- ✅ Extract persistence into `storage/` with interfaces.
+- ✅ Ensure atomic writes + file locks are consistently applied.
 
 Deliverables:
-- Same endpoints, same behavior, but smaller files.
-- Storage layer testable in isolation.
+- ✅ Same endpoints, same behavior, but smaller files (1700 lines → 25+ focused modules).
+- ✅ Storage layer testable in isolation.
+- ✅ Backward compatibility maintained (old api_server.py imports from mypm).
+- ✅ All API endpoints tested and working.
 
-### Phase 2: Frontend Modernization (Vue 3 + Vite + TS) (3-8 sessions)
+**Completed**: 2026-01-31 (Session 1)
 
-- Create `frontend/` Vite app.
-- Implement core flows:
-  - Project list (card/list view)
-  - Project detail (edit + Agent timeline)
-- Keep backend serving old `web/` until new UI is feature-complete.
-- Add a new mount path (example): `/app` serves new frontend build, while `/` keeps old UI during transition.
+### Phase 2: Frontend Modernization (Vue 3 + Vite + TS) 🔄 IN PROGRESS (30% DONE)
+
+#### ✅ Completed (Phase 2.1 - Foundation):
+- ✅ Install dependencies (Pinia, Vue Router)
+- ✅ Create TypeScript type definitions (`frontend/src/api/types.ts`)
+- ✅ Implement typed API client (`frontend/src/api/client.ts`)
+- ✅ Implement Pinia projects store (`frontend/src/stores/projects.ts`)
+- ✅ Setup basic project structure (folders for stores, api, components, pages, router)
+- ✅ Extract CSS tokens to `frontend/src/styles/tokens.css` and `base.css`
+
+#### 🔄 In Progress (Phase 2.2 - Components & Integration):
+- ⏳ Implement agent store (`frontend/src/stores/agent.ts`)
+- ⏳ Setup Vue Router (`frontend/src/router/index.ts`)
+- ⏳ Create shared components:
+  - TheHeader.vue (navbar with theme toggle, buttons)
+  - TheFilters.vue (status, priority, sort, view toggle)
+  - Toast.vue (notification system)
+- ⏳ Create project components:
+  - ProjectsPage.vue (main page, orchestrates everything)
+  - ProjectCard.vue (card view item with drag-drop)
+  - ProjectListItem.vue (table row item)
+  - ProjectDetailModal.vue (tabs: Details + Agent Timeline)
+- ⏳ Create modal components:
+  - StatsModal.vue
+  - OpsModal.vue
+- ⏳ Wire up App.vue and main.ts (router + Pinia)
+- ⏳ Update backend to serve frontend at /app route
+- ⏳ Test dev mode + production build
 
 Deliverables:
 - New UI running in dev mode and build mode.
 - Feature parity for essential operations.
+- `/app` serves new UI, `/` keeps old UI during transition.
+
+**Target Completion**: Phase 2.2 (next session)
 
 ### Phase 3: Backend Switch to FastAPI (optional but recommended) (3-6 sessions)
 
