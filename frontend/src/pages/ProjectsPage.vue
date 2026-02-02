@@ -105,79 +105,18 @@
       @close="showStatsModal = false"
     />
 
-    <!-- Simple detail modal (placeholder for now) -->
-    <div v-if="showDetailModal && selectedProject" class="modal-overlay" @click.self="closeDetailModal">
-      <div class="modal-content detail-modal">
-        <div class="modal-header">
-          <h2>{{ selectedProject.name }}</h2>
-          <button @click="closeDetailModal" class="btn-close">×</button>
-        </div>
-        <div class="modal-body">
-          <div class="detail-section">
-            <label>描述</label>
-            <p>{{ selectedProject.description || '无描述' }}</p>
-          </div>
-          <div class="detail-row">
-            <div class="detail-section">
-              <label>状态</label>
-              <span class="badge" :class="`status-${selectedProject.status}`">
-                {{ statusLabels[selectedProject.status] }}
-              </span>
-            </div>
-            <div class="detail-section">
-              <label>优先级</label>
-              <span class="badge" :class="`priority-${selectedProject.priority}`">
-                {{ priorityLabels[selectedProject.priority] }}
-              </span>
-            </div>
-          </div>
-          <div class="detail-row">
-            <div class="detail-section">
-              <label>分类</label>
-              <p>{{ selectedProject.category || '-' }}</p>
-            </div>
-            <div class="detail-section">
-              <label>进度</label>
-              <p>{{ selectedProject.progress }}%</p>
-            </div>
-          </div>
-          <div class="detail-section">
-            <label>标签</label>
-            <div class="tags">
-              <span v-for="tag in selectedProject.tags" :key="tag" class="tag">{{ tag }}</span>
-              <span v-if="!selectedProject.tags || selectedProject.tags.length === 0">-</span>
-            </div>
-          </div>
-          <div class="detail-row">
-            <div class="detail-section">
-              <label>创建时间</label>
-              <p>{{ formatDate(selectedProject.created_at) }}</p>
-            </div>
-            <div class="detail-section">
-              <label>更新时间</label>
-              <p>{{ formatDate(selectedProject.updated_at) }}</p>
-            </div>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button @click="openEditModal(selectedProject)" class="btn btn-primary">编辑</button>
-          <button @click="handleDeleteProject(selectedProject.id)" class="btn btn-danger">删除</button>
-        </div>
-      </div>
-    </div>
+    <ProjectDetailModal
+      v-if="showDetailModal && selectedProject"
+      :project="selectedProject"
+      @close="closeDetailModal"
+      @edit="openEditModal"
+      @delete="handleDeleteProject"
+    />
 
-    <!-- Ops modal placeholder -->
-    <div v-if="showOpsModal" class="modal-overlay" @click.self="showOpsModal = false">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h2>运维操作</h2>
-          <button @click="showOpsModal = false" class="btn-close">×</button>
-        </div>
-        <div class="modal-body">
-          <p class="text-muted">运维功能开发中...</p>
-        </div>
-      </div>
-    </div>
+    <OpsModal
+      v-if="showOpsModal"
+      @close="showOpsModal = false"
+    />
   </div>
 </template>
 
@@ -192,6 +131,8 @@ import TheFilters from '../components/TheFilters.vue'
 import ProjectCard from '../components/ProjectCard.vue'
 import ProjectFormModal from '../components/ProjectFormModal.vue'
 import StatsModal from '../components/StatsModal.vue'
+import ProjectDetailModal from '../components/ProjectDetailModal.vue'
+import OpsModal from '../components/OpsModal.vue'
 
 const projectsStore = useProjectsStore()
 const { projects, filteredProjects, loading, error, viewMode } = storeToRefs(projectsStore)
@@ -276,8 +217,6 @@ async function handleSaveProject(data: ProjectFormData) {
 }
 
 async function handleDeleteProject(id: string) {
-  if (!confirm('确定要删除这个项目吗？')) return
-  
   try {
     await projectsStore.deleteProject(id)
     showToast('项目已删除', 'success')
@@ -286,11 +225,6 @@ async function handleDeleteProject(id: string) {
     console.error('Failed to delete project:', err)
     showToast('删除项目失败', 'error')
   }
-}
-
-// Utility
-function formatDate(date: string): string {
-  return new Date(date).toLocaleString('zh-CN')
 }
 
 onMounted(() => {
@@ -480,111 +414,5 @@ onMounted(() => {
 
 .btn-danger:hover {
   background: #b91c1c;
-}
-
-/* Detail modal */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: 20px;
-}
-
-.modal-content {
-  background: var(--card-bg);
-  border-radius: var(--border-radius);
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-  max-width: 600px;
-  width: 100%;
-  max-height: 90vh;
-  overflow: auto;
-}
-
-.detail-modal {
-  max-width: 700px;
-}
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 20px 24px;
-  border-bottom: 1px solid var(--border-color);
-}
-
-.modal-header h2 {
-  margin: 0;
-  font-size: 20px;
-  color: var(--text-primary);
-}
-
-.btn-close {
-  background: none;
-  border: none;
-  font-size: 28px;
-  color: var(--text-secondary);
-  cursor: pointer;
-  padding: 0;
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 4px;
-  transition: background 0.2s;
-}
-
-.btn-close:hover {
-  background: var(--hover-bg);
-}
-
-.modal-body {
-  padding: 24px;
-}
-
-.detail-section {
-  margin-bottom: 20px;
-}
-
-.detail-section label {
-  display: block;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-secondary);
-  margin-bottom: 6px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.detail-section p {
-  margin: 0;
-  color: var(--text-primary);
-}
-
-.detail-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 20px;
-}
-
-.tags {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-
-.modal-footer {
-  padding: 16px 24px;
-  border-top: 1px solid var(--border-color);
-  display: flex;
-  gap: 12px;
-  justify-content: flex-end;
 }
 </style>

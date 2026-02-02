@@ -77,6 +77,29 @@ echo "[INFO] Installing dependencies..."
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 
+# Build frontend if npm is available
+if command -v npm >/dev/null 2>&1; then
+  echo "[INFO] Building frontend..."
+  cd "$ROOT_DIR/frontend"
+  
+  # Check if node_modules exists, if not install dependencies
+  if [[ ! -d "node_modules" ]]; then
+    echo "[INFO] Installing frontend dependencies..."
+    npm install
+  fi
+  
+  # Build production bundle
+  echo "[INFO] Running production build..."
+  npx vite build
+  
+  echo "[INFO] Frontend build complete. Output: frontend/dist/"
+  cd "$ROOT_DIR"
+else
+  echo "[WARN] npm not found. Skipping frontend build."
+  echo "[HINT] Frontend build is optional. Install Node.js/npm if you need the Vue 3 UI."
+  echo "[HINT] Old UI at / will continue to work without the build."
+fi
+
 SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
 
 if command -v systemctl >/dev/null 2>&1; then
