@@ -9,7 +9,7 @@ class Config:
     
     # Paths
     ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
-    DATA_DIR = os.path.join(ROOT_DIR, '..', 'data')
+    DATA_DIR = os.path.join(ROOT_DIR, 'data')
     
     DATA_FILE = os.path.join(DATA_DIR, 'projects.json')
     AGENT_RUNS_FILE = os.path.join(DATA_DIR, 'agent_runs.json')
@@ -29,6 +29,6 @@ class Config:
     ADMIN_TOKEN = os.environ.get('PM_ADMIN_TOKEN', '').strip()
     AGENT_TOKEN = os.environ.get('PM_AGENT_TOKEN', '').strip()
     
-    # Static files
-    STATIC_FOLDER = os.path.join(ROOT_DIR, '..', 'web')
+    # Static files (old UI)
+    STATIC_FOLDER = os.path.join(ROOT_DIR, 'web')
     STATIC_URL_PATH = ''
