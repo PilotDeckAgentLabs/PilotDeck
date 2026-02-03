@@ -1114,33 +1114,16 @@ function opsStopDeployLog() {
   }
 }
 
-async function opsPushData() {
-  try {
-    setOpsOutput('[INFO] Pushing data repo changes to GitHub...\n')
-    const res = await opsFetch('/admin/push', {
-      method: 'POST',
-      body: JSON.stringify({ mode: 'data-only' }),
-    })
-    appendOpsOutput((res && res.output) ? `${res.output}\n` : '[INFO] Done.\n')
-    showToast('数据已推送到 GitHub', 'success')
-  } catch (e) {
-    // Error message already includes detailed output from apiFetch
-    appendOpsOutput(`\n${e.message}\n`)
-    showToast('推送失败，请查看详细输出', 'error')
-  }
+function opsBackupDb() {
+  setOpsOutput('[INFO] Not implemented yet: database backup.\n')
+  appendOpsOutput('[HINT] Use: python scripts/sqlite_backup.py --db data/pm.db --out data/pm_backup.db\n')
+  showToast('备份功能即将支持', 'info')
 }
 
-async function opsPullDataRepo() {
-  try {
-    setOpsOutput('[INFO] Pulling data repo updates from GitHub...\n')
-    const res = await opsFetch('/admin/data/pull', { method: 'POST' })
-    appendOpsOutput((res && res.output) ? `${res.output}\n` : '[INFO] Done.\n')
-    showToast('数据仓库已更新', 'success')
-  } catch (e) {
-    // Error message already includes detailed output from apiFetch
-    appendOpsOutput(`\n${e.message}\n`)
-    showToast('拉取失败，请查看详细输出', 'error')
-  }
+function opsRestoreDb() {
+  setOpsOutput('[INFO] Not implemented yet: database restore.\n')
+  appendOpsOutput('[HINT] Stop service, replace data/pm.db, then restart.\n')
+  showToast('恢复功能即将支持', 'info')
 }
 
 async function opsPullRestart() {
@@ -1541,8 +1524,8 @@ window.closeProjectDetailModal = closeProjectDetailModal
 window.refreshAgentTimeline = refreshAgentTimeline
 window.openOpsModal = openOpsModal
 window.closeOpsModal = closeOpsModal
-window.opsPushData = opsPushData
-window.opsPullDataRepo = opsPullDataRepo
+window.opsBackupDb = opsBackupDb
+window.opsRestoreDb = opsRestoreDb
 window.opsPullRestart = opsPullRestart
 window.opsFetchDeployLog = opsFetchDeployLog
 window.opsStartDeployLog = opsStartDeployLog

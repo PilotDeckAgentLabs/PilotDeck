@@ -248,14 +248,6 @@ export async function getHealth(): Promise<HealthCheck> {
 
 // ===== Ops/Admin API =====
 
-export async function opsPushData(token: string): Promise<{ output: string }> {
-  return opsFetch('/admin/push-data', token, { method: 'POST' })
-}
-
-export async function opsPullDataRepo(token: string): Promise<{ output: string }> {
-  return opsFetch('/admin/pull-data-repo', token, { method: 'POST' })
-}
-
 export async function opsPullRestart(token: string): Promise<{ output: string }> {
   return opsFetch('/admin/pull-restart', token, { method: 'POST' })
 }

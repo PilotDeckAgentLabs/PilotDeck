@@ -23,4 +23,8 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
+# Local runtime data (SQLite, snapshots, legacy imports)
+data/*
+!data/schema.json
+
 data/frontend/dist/

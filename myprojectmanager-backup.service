@@ -1,17 +1,16 @@
 #!/usr/bin/env bash
-# systemd service unit for automatic daily data backup
-# This unit is triggered by myprojectmanager-backup.timer
-# DO NOT run this unit directly; use the timer instead.
+# systemd service unit for automatic daily DB snapshot
+# This unit is triggered by myprojectmanager-backup.timer.
 
 [Unit]
-Description=MyProjectManager Daily Data Backup to GitHub
+Description=MyProjectManager Daily SQLite Snapshot
 After=network-online.target
 Wants=network-online.target
 
 [Service]
 Type=oneshot
 WorkingDirectory=/root/MyProjectManager
-ExecStart=/bin/bash /root/MyProjectManager/push_data_to_github.sh
+ExecStart=/bin/bash /root/MyProjectManager/backup_db_snapshot.sh
 
 # Environment variables for git (adjust if running as non-root user)
 Environment="HOME=/root"

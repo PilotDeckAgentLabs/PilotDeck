@@ -21,21 +21,19 @@
 
         <div class="ops-actions">
           <button
-            @click="handlePushData"
-            :disabled="!token || isRunning"
+            @click="handleBackup"
+            :disabled="true"
             class="btn btn-primary"
           >
-            <span v-if="operation === 'push' && isRunning" class="btn-spinner"></span>
-            推送数据到 GitHub
+            备份数据库（即将支持）
           </button>
 
           <button
-            @click="handlePullData"
-            :disabled="!token || isRunning"
+            @click="handleRestore"
+            :disabled="true"
             class="btn btn-secondary"
           >
-            <span v-if="operation === 'pull' && isRunning" class="btn-spinner"></span>
-            拉取数据仓库
+            恢复数据库（即将支持）
           </button>
 
           <button
@@ -66,8 +64,8 @@
         <div class="ops-info">
           <h4>操作说明</h4>
           <ul>
-            <li><strong>推送数据到 GitHub:</strong> 将本地数据变更提交并推送到数据仓库</li>
-            <li><strong>拉取数据仓库:</strong> 从数据仓库拉取最新数据</li>
+            <li><strong>备份数据库:</strong> 即将支持（会生成一致性快照，可上传到对象存储）</li>
+            <li><strong>恢复数据库:</strong> 即将支持（从快照恢复后重启服务）</li>
             <li><strong>拉取并重启服务:</strong> 拉取代码更新、安装依赖并重启服务（用于部署）</li>
           </ul>
         </div>
@@ -78,7 +76,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { opsPushData, opsPullDataRepo, opsPullRestart } from '../api/client'
+import { opsPullRestart } from '../api/client'
 import { useToast } from '../composables/useToast'
 
 const emit = defineEmits<{
@@ -89,67 +87,17 @@ const { showToast } = useToast()
 
 const token = ref('')
 const isRunning = ref(false)
-const operation = ref<'push' | 'pull' | 'restart' | null>(null)
+const operation = ref<'restart' | null>(null)
 const statusType = ref<'idle' | 'running' | 'success' | 'error'>('idle')
 const statusMessage = ref('')
 const output = ref('')
 
-async function handlePushData() {
-  if (!token.value) {
-    showToast('请输入访问令牌', 'error')
-    return
-  }
-
-  isRunning.value = true
-  operation.value = 'push'
-  statusType.value = 'running'
-  statusMessage.value = '正在推送数据到 GitHub...'
-  output.value = ''
-
-  try {
-    const result = await opsPushData(token.value)
-    statusType.value = 'success'
-    statusMessage.value = '数据推送成功'
-    output.value = result.output || '操作完成'
-    showToast('数据已推送到 GitHub', 'success')
-  } catch (err: any) {
-    statusType.value = 'error'
-    statusMessage.value = '数据推送失败'
-    output.value = err.message || String(err)
-    showToast('数据推送失败', 'error')
-  } finally {
-    isRunning.value = false
-    operation.value = null
-  }
+function handleBackup() {
+  showToast('备份功能即将支持（未来可接对象存储）', 'info')
 }
 
-async function handlePullData() {
-  if (!token.value) {
-    showToast('请输入访问令牌', 'error')
-    return
-  }
-
-  isRunning.value = true
-  operation.value = 'pull'
-  statusType.value = 'running'
-  statusMessage.value = '正在拉取数据仓库...'
-  output.value = ''
-
-  try {
-    const result = await opsPullDataRepo(token.value)
-    statusType.value = 'success'
-    statusMessage.value = '数据拉取成功'
-    output.value = result.output || '操作完成'
-    showToast('数据已从 GitHub 拉取', 'success')
-  } catch (err: any) {
-    statusType.value = 'error'
-    statusMessage.value = '数据拉取失败'
-    output.value = err.message || String(err)
-    showToast('数据拉取失败', 'error')
-  } finally {
-    isRunning.value = false
-    operation.value = null
-  }
+function handleRestore() {
+  showToast('恢复功能即将支持（未来可接对象存储）', 'info')
 }
 
 async function handlePullRestart() {

@@ -131,8 +131,8 @@ EOF
   systemctl restart "$SERVICE_NAME"
   systemctl --no-pager --full status "$SERVICE_NAME" | sed -n '1,20p' || true
 
-  # Setup automatic daily data backup (idempotent)
-  echo "[INFO] Setting up automatic daily data backup..."
+  # Setup automatic daily SQLite snapshot (idempotent)
+  echo "[INFO] Setting up automatic daily DB snapshot..."
   BACKUP_SERVICE_FILE="/etc/systemd/system/myprojectmanager-backup.service"
   BACKUP_TIMER_FILE="/etc/systemd/system/myprojectmanager-backup.timer"
   
@@ -176,7 +176,7 @@ EOF
     if systemctl list-unit-files myprojectmanager-backup.timer >/dev/null 2>&1; then
       echo "[INFO] Backup timer status:"
       systemctl --no-pager status myprojectmanager-backup.timer 2>/dev/null | sed -n '1,10p' || true
-      echo "[INFO] Next scheduled backup:"
+      echo "[INFO] Next scheduled snapshot:"
       systemctl list-timers myprojectmanager-backup.timer --no-pager --no-legend 2>/dev/null || true
     else
       echo "[WARN] Backup timer not installed. Run manually: sudo $ROOT_DIR/setup_auto_backup.sh"

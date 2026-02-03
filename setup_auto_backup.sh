@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Setup automatic daily data backup using systemd timer
+# Setup automatic daily SQLite snapshot using systemd timer
 # This script installs myprojectmanager-backup.{service,timer} to systemd
 # and enables the timer to run at midnight every day.
 #
@@ -35,7 +35,7 @@ CMD="${1:-install}"
 
 case "$CMD" in
   install)
-    echo "[INFO] Installing systemd timer for daily data backup..."
+    echo "[INFO] Installing systemd timer for daily DB snapshot..."
     
     # Copy service and timer files to systemd directory
     cp -f "$ROOT_DIR/$SERVICE_FILE" "$SYSTEMD_DIR/$SERVICE_FILE"
@@ -56,7 +56,7 @@ case "$CMD" in
     echo "=== Next Scheduled Run ==="
     systemctl list-timers "$TIMER_FILE" --no-pager || true
     echo ""
-    echo "[INFO] Data will be automatically pushed to GitHub at midnight (00:00) every day."
+    echo "[INFO] A SQLite snapshot will be generated at midnight (00:00) every day."
     echo "[INFO] Check logs: journalctl -u myprojectmanager-backup.service -f"
     ;;
     
@@ -67,7 +67,7 @@ case "$CMD" in
     echo "=== Next Scheduled Run ==="
     systemctl list-timers "$TIMER_FILE" --no-pager || true
     echo ""
-    echo "=== Recent Backup Logs (last 20 lines) ==="
+    echo "=== Recent Snapshot Logs (last 20 lines) ==="
     journalctl -u myprojectmanager-backup.service -n 20 --no-pager || true
     ;;
     
