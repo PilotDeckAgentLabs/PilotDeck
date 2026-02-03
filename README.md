@@ -17,9 +17,9 @@
 
 - 项目管理：状态、优先级、分类、进度、标签、成本/收益
 - Agent API：
-  - runs：一次工作流/会话的容器
-  - events：项目级执行轨迹（可审计、可回放、便于复盘）
-  - actions：面向 Agent 的语义化操作入口（自动写 event、支持幂等）
+  - runs：一次 Agent 工作会话/工作单元的容器（用于聚合、归档、写总结与最终状态）
+  - events：append-only 的项目时间线（审计记录：发生了什么/为什么）
+  - actions：语义化动作入口（可选更新项目 + 自动写入 event + 内置幂等）
 - 备份/恢复（最简单可理解的方式）：
   - 导出备份：浏览器下载 SQLite 快照文件
   - 从备份恢复：上传快照文件覆盖当前数据库
@@ -33,8 +33,24 @@
   - 新 UI（Vue 3，构建后可用）：`/app`
 
 文档：
-- Agent 客户端对接：`docs/AGENT_API.md`
-- 数据库运维（备份/恢复/排障）：`docs/DB_OPS.md`
+- Agent 客户端对接：`docs/AGENT_API.md` / `docs/AGENT_API.zh-CN.md`
+- 工程架构：`docs/ARCHITECTURE.md` / `docs/ARCHITECTURE.zh-CN.md`
+- 数据库运维：`docs/DB_OPS.md` / `docs/DB_OPS.zh-CN.md`
+
+## Agent 概念速读（Run / Event / Action）
+
+这三者分别解决不同问题：
+
+- Run：把一段时间内的 Agent 行为聚合成“一个工作单元”（开始/结束/状态/总结/指标）。
+- Event：项目级时间线（append-only），用于审计与复盘；可以关联 `projectId` 和 `runId`。
+- Action：给 Agent 的“动词接口”。每条 action 会写入一条 event（作为幂等键），并且可能更新项目。
+
+如何选择写入方式：
+
+1) 需要更新任意项目字段（最灵活）：用 `PATCH /api/projects/<id>`，并显式写 `POST /api/agent/events` 记录原因。
+2) 只需要常见动作 + 想要自动留痕与幂等：用 `POST /api/agent/actions`。
+
+完整说明（面向人类与 LLM 客户端）：`docs/AGENT_API.md` / `docs/AGENT_API.zh-CN.md`
 
 ## 快速开始（本地）
 
@@ -115,7 +131,7 @@ sudo systemctl restart pilotdeck
    - “导出备份（下载）”：下载 `pm_backup_*.db`
    - “从备份恢复”：选择并上传 `pm_backup_*.db`
 
-更完整说明与排障：`docs/DB_OPS.md`
+更完整说明与排障：`docs/DB_OPS.md` / `docs/DB_OPS.zh-CN.md`
 
 ## 部署到 Linux 服务器（可选）
 
