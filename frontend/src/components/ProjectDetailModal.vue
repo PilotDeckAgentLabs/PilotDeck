@@ -202,15 +202,30 @@ const timeline = computed(() => {
 
   // Add runs
   agentStore.runs.forEach((run: AgentRun) => {
-    if (run.project_id === props.project.id) {
-      items.push({ ...run, type: 'run' })
+    if (run.projectId === props.project.id) {
+      const ts = String(run.startedAt || run.createdAt || run.updatedAt || '')
+      if (ts) {
+        items.push({
+          ...run,
+          type: 'run',
+          timestamp: ts,
+        })
+      }
     }
   })
 
   // Add events
-  agentStore.events.forEach((event: AgentEvent) => {
-    if (event.project_id === props.project.id) {
-      items.push({ ...event, type: 'event' })
+  agentStore.events.forEach((event: AgentEvent, idx: number) => {
+    if (event.projectId === props.project.id) {
+      const ts = String(event.ts || '')
+      if (ts) {
+        items.push({
+          ...event,
+          type: 'event',
+          id: String(event.id || `evt-${idx}`),
+          timestamp: ts,
+        })
+      }
     }
   })
 

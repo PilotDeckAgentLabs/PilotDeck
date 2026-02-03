@@ -95,6 +95,7 @@
     <!-- Modals -->
     <ProjectFormModal
       v-if="showFormModal"
+      :show="showFormModal"
       :project="editingProject"
       @close="closeFormModal"
       @save="handleSaveProject"
@@ -102,6 +103,7 @@
 
     <StatsModal
       v-if="showStatsModal"
+      :show="showStatsModal"
       @close="showStatsModal = false"
     />
 

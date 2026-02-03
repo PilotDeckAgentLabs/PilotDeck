@@ -72,7 +72,7 @@ import { ref, watch } from 'vue'
 import type { Stats } from '../api/types'
 import * as api from '../api/client'
 
-defineProps<{
+const props = defineProps<{
   show: boolean
 }>()
 
