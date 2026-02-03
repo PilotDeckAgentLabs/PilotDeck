@@ -72,6 +72,41 @@ npm run build
 - `PM_ADMIN_TOKEN`：运维口令（备份/恢复/部署等敏感接口需提供请求头 `X-PM-Token`）
 - `PM_AGENT_TOKEN`：Agent 口令（设置后 Agent API 需提供 `X-PM-Agent-Token`）
 
+#### PM_ADMIN_TOKEN 如何设置
+
+本项目不会提供默认口令。你需要在运行服务的环境里显式设置 `PM_ADMIN_TOKEN`。
+
+本地（macOS/Linux，临时生效）：
+
+```bash
+export PM_ADMIN_TOKEN="<your-strong-token>"
+python server/main.py
+```
+
+本地（Windows PowerShell，临时生效）：
+
+```powershell
+$env:PM_ADMIN_TOKEN = "<your-strong-token>"
+python server\main.py
+```
+
+Linux 服务器（systemd，推荐持久化）：
+
+1) 编辑你的服务 unit（例如 `/etc/systemd/system/pilotdeck.service`）在 `[Service]` 下增加：
+
+```ini
+Environment=PM_ADMIN_TOKEN=<your-strong-token>
+```
+
+2) 使配置生效：
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl restart pilotdeck
+```
+
+设置后，在 UI 的“运维”中填写该口令即可使用导出备份/恢复等操作。
+
 ## 备份与恢复（推荐从 UI 开始）
 
 1) 进入 UI 的“运维”

@@ -40,6 +40,7 @@ python server/main.py
 - `PM_PORT`：端口（默认 `8689`）
 - `PM_DEBUG`：调试（默认 `0`）
 - `PM_DB_FILE`：SQLite DB 文件路径（默认 `data/pm.db`）
+- `PM_ADMIN_TOKEN`：运维口令（用于导出备份/恢复/部署等敏感操作）
 
 示例：
 
@@ -47,6 +48,7 @@ python server/main.py
 export PM_PORT=8689
 export PM_DEBUG=0
 export PM_DB_FILE=./data/pm.db
+export PM_ADMIN_TOKEN="<your-strong-token>"
 python server/main.py
 ```
 
