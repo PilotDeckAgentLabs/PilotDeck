@@ -23,7 +23,7 @@ if __name__ == '__main__':
     print("=" * 60)
     print("项目管理系统 API 服务")
     print("=" * 60)
-    print(f"数据文件: {config.DATA_FILE}")
+    print(f"数据库: {config.DB_FILE}")
     port = config.PORT
     print(f"API地址: http://localhost:{port}/api")
     print(f"Web界面: http://localhost:{port}")

@@ -35,10 +35,10 @@ def create_app(config: Config = None) -> Flask:
     app.config.from_object(config)
     app.config['ROOT_DIR'] = config.ROOT_DIR
     
-    # Initialize storage layer
-    projects_store = ProjectsStore(config.DATA_FILE)
-    agent_runs_store = AgentRunsStore(config.AGENT_RUNS_FILE)
-    agent_events_store = AgentEventsStore(config.AGENT_EVENTS_FILE)
+    # Initialize storage layer (SQLite by default)
+    projects_store = ProjectsStore(config.DB_FILE, legacy_projects_json=config.DATA_FILE)
+    agent_runs_store = AgentRunsStore(config.DB_FILE, legacy_runs_json=config.AGENT_RUNS_FILE)
+    agent_events_store = AgentEventsStore(config.DB_FILE, legacy_events_jsonl=config.AGENT_EVENTS_FILE)
     
     # Initialize services
     project_service = ProjectService(projects_store)

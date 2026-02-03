@@ -14,6 +14,10 @@ class Config:
     DATA_FILE = os.path.join(DATA_DIR, 'projects.json')
     AGENT_RUNS_FILE = os.path.join(DATA_DIR, 'agent_runs.json')
     AGENT_EVENTS_FILE = os.path.join(DATA_DIR, 'agent_events.jsonl')
+
+    # SQLite (recommended runtime storage)
+    # Keep legacy JSON paths for one-time import / compatibility.
+    DB_FILE = os.environ.get('PM_DB_FILE') or os.path.join(DATA_DIR, 'pm.db')
     
     DEPLOY_LOG_FILE = os.path.join(ROOT_DIR, 'deploy_run.log')
     DEPLOY_STATE_FILE = os.path.join(ROOT_DIR, 'deploy_state.json')

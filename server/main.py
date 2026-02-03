@@ -30,7 +30,7 @@ def main():
     print("=" * 60)
     print("项目管理系统 API 服务")
     print("=" * 60)
-    print(f"数据文件: {config.DATA_FILE}")
+    print(f"数据库: {config.DB_FILE}")
     print(f"API地址: http://localhost:{config.PORT}/api")
     print(f"Web界面: http://localhost:{config.PORT}")
     print(f"调试模式: {'开启' if config.DEBUG else '关闭'}")

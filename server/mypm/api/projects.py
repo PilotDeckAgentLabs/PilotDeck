@@ -162,17 +162,14 @@ def reorder_projects():
             }), 400
         
         projects = service.reorder_projects(ids)
-        
-        # Get metadata
-        from ..storage.projects_json import ProjectsStore
         store = current_app.extensions.get('projects_store')
-        data = store.load()
+        last_updated = store.last_updated() if store else None
         
         return jsonify({
             "success": True,
             "data": projects,
             "total": len(projects),
-            "lastUpdated": data.get("lastUpdated")
+            "lastUpdated": last_updated
         })
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
@@ -197,18 +194,15 @@ def batch_update_projects():
             }), 400
         
         results, changed = service.batch_update(ops)
-        
-        # Get metadata
-        from ..storage.projects_json import ProjectsStore
         store = current_app.extensions.get('projects_store')
-        data = store.load()
+        last_updated = store.last_updated() if store else None
         
         return jsonify({
             "success": True,
             "data": {
                 "results": results,
                 "changed": changed,
-                "lastUpdated": data.get('lastUpdated'),
+                "lastUpdated": last_updated,
             }
         })
     except Exception as e:

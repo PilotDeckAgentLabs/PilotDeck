@@ -20,6 +20,10 @@ def _stores():
     return current_app.extensions.get('stores', {})
 
 
+def _project_service():
+    return current_app.extensions.get('project_service')
+
+
 def _parse_iso(ts: str) -> Optional[datetime]:
     if not ts:
         return None
@@ -93,12 +97,11 @@ def agent_actions():
             return jsonify({"success": False, "error": "actions must be a non-empty array"}), 400
 
         stores = _stores()
-        projects_store = stores.get('projects_store')
         events_store = stores.get('agent_events_store')
-        if not projects_store or not events_store:
+        project_service = _project_service()
+        if not events_store or not project_service:
             return jsonify({"success": False, "error": "stores not configured"}), 500
 
-        data = projects_store.load()
         changed = False
         results = []
 
@@ -114,7 +117,12 @@ def agent_actions():
                 existing = events_store.exists(action_id)
                 if existing:
                     pid = existing.get('projectId') or (a.get('projectId') or default_project_id)
-                    project = _project_find_by_id(data, str(pid or '')) if pid else None
+                    project = None
+                    if pid:
+                        try:
+                            project = project_service.get_project(str(pid))
+                        except Exception:
+                            project = None
                     results.append({
                         "id": action_id,
                         "success": True,
@@ -130,8 +138,9 @@ def agent_actions():
                 if not project_id or not isinstance(project_id, str):
                     raise ValueError('projectId is required')
 
-                project = _project_find_by_id(data, project_id)
-                if not project:
+                try:
+                    project = project_service.get_project(project_id)
+                except Exception:
                     results.append({
                         "id": action_id,
                         "success": False,
@@ -242,12 +251,23 @@ def agent_actions():
                 }
 
                 if (not record_only) and patch:
-                    for k, v in patch.items():
-                        if k in ("id", "createdAt"):
+                    try:
+                        project = project_service.patch_project(project_id, patch, if_updated_at=if_updated_at)
+                        changed = True
+                    except Exception as e:
+                        # Keep the existing API behavior for conflicts.
+                        msg = str(e)
+                        if 'mismatch' in msg or 'Conflict' in msg:
+                            results.append({
+                                "id": action_id,
+                                "success": False,
+                                "status": 409,
+                                "projectId": project_id,
+                                "error": "Conflict: updatedAt mismatch",
+                                "data": {"message": msg}
+                            })
                             continue
-                        project[k] = v
-                    project['updatedAt'] = datetime.now().isoformat()
-                    changed = True
+                        raise
 
                 evt = _build_action_event(
                     action_id,
@@ -297,7 +317,7 @@ def agent_actions():
             "data": {
                 "results": results,
                 "changed": changed,
-                "lastUpdated": data.get('lastUpdated'),
+                "lastUpdated": getattr(stores.get('projects_store'), 'last_updated', lambda: None)(),
             }
         })
     except Exception as e:
@@ -351,9 +371,8 @@ def agent_list_events():
         return err
 
     stores = _stores()
-    events_file = getattr(stores.get('agent_events_store'), 'events_file', None)
     events_store = stores.get('agent_events_store')
-    if not events_store or not events_file:
+    if not events_store:
         return jsonify({"success": False, "error": "stores not configured"}), 500
 
     try:
@@ -380,35 +399,15 @@ def agent_list_events():
             except Exception:
                 max_lines = 2000
 
-        # Read+filter
-        from server.mypm.storage.common import read_last_lines
-        import json
-        lines = read_last_lines(events_file, max_lines=max_lines)
-        events: List[Dict] = []
-        for line in lines:
-            try:
-                obj = json.loads(line)
-            except Exception:
-                continue
-            if not isinstance(obj, dict):
-                continue
-            obj = events_store.normalize_for_read(obj)
-            if project_id and obj.get('projectId') != project_id:
-                continue
-            if run_id and obj.get('runId') != run_id:
-                continue
-            if agent_id and obj.get('agentId') != agent_id:
-                continue
-            if typ and obj.get('type') != typ:
-                continue
-            if since_dt:
-                ts = _parse_iso(str(obj.get('ts') or '').strip())
-                if not ts or ts < since_dt:
-                    continue
-            events.append(obj)
-
-        if len(events) > lim:
-            events = events[-lim:]
+        events = events_store.list(
+            project_id=project_id,
+            run_id=run_id,
+            agent_id=agent_id,
+            typ=typ,
+            since_dt=since_dt,
+            limit=lim,
+            tail_lines=max_lines,
+        )
 
         return jsonify({"success": True, "data": events, "total": len(events)})
     except Exception as e:

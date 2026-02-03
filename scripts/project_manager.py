@@ -1,49 +1,31 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-项目管理数据操作脚本
-提供命令行接口来管理projects.json数据
+"""Project management CLI.
+
+Default backend: SQLite (data/pm.db)
+Legacy backend: JSON (data/projects.json) is supported via one-time import into SQLite.
 """
 
 import json
 import os
 import sys
-from datetime import datetime
-from typing import Dict, List, Optional
-import uuid
+from typing import Dict, Optional
+
+
+ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, os.path.join(ROOT_DIR, 'server'))
+
+from mypm.storage import ProjectsStore  # noqa: E402
+from mypm.domain.errors import ProjectNotFoundError  # noqa: E402
 
 class ProjectManager:
-    def __init__(self, data_file: str = "data/projects.json"):
-        self.data_file = data_file
-        self.data = self._load_data()
-    
-    def _load_data(self) -> Dict:
-        """加载项目数据"""
-        if not os.path.exists(self.data_file):
-            return {
-                "version": "1.0.0",
-                "lastUpdated": datetime.now().isoformat(),
-                "projects": []
-            }
-        
-        with open(self.data_file, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    
-    def _save_data(self):
-        """保存项目数据"""
-        self.data["lastUpdated"] = datetime.now().isoformat()
-        os.makedirs(os.path.dirname(self.data_file), exist_ok=True)
-        with open(self.data_file, 'w', encoding='utf-8') as f:
-            json.dump(self.data, f, ensure_ascii=False, indent=2)
+    def __init__(self, db_file: str = "data/pm.db", legacy_json: str = "data/projects.json"):
+        self.db_file = db_file
+        self.store = ProjectsStore(db_file, legacy_projects_json=legacy_json)
     
     def list_projects(self, status: Optional[str] = None, priority: Optional[str] = None):
         """列出项目"""
-        projects = self.data["projects"]
-        
-        if status:
-            projects = [p for p in projects if p.get("status") == status]
-        if priority:
-            projects = [p for p in projects if p.get("priority") == priority]
+        projects, _meta = self.store.list(status=status, priority=priority)
         
         if not projects:
             print("未找到项目")
@@ -56,60 +38,32 @@ class ProjectManager:
     
     def get_project(self, project_id: str) -> Optional[Dict]:
         """获取单个项目详情"""
-        for project in self.data["projects"]:
-            if project["id"] == project_id:
-                return project
-        return None
+        return self.store.get(project_id)
     
     def add_project(self, project_data: Dict):
         """添加新项目"""
-        # 生成项目ID
-        if "id" not in project_data:
-            project_data["id"] = f"proj-{str(uuid.uuid4())[:8]}"
-        
-        # 设置时间戳
-        now = datetime.now().isoformat()
-        project_data["createdAt"] = now
-        project_data["updatedAt"] = now
-        
-        # 设置默认值
-        project_data.setdefault("status", "planning")
-        project_data.setdefault("priority", "medium")
-        project_data.setdefault("progress", 0)
-        project_data.setdefault("tags", [])
-        
-        self.data["projects"].append(project_data)
-        self._save_data()
-        print(f"项目已添加: {project_data['id']} - {project_data['name']}")
+        project = self.store.create(project_data or {})
+        print(f"项目已添加: {project['id']} - {project.get('name')}")
     
     def update_project(self, project_id: str, updates: Dict):
         """更新项目"""
-        project = self.get_project(project_id)
-        if not project:
+        try:
+            self.store.patch(project_id, updates or {}, if_updated_at=None)
+            print(f"项目已更新: {project_id}")
+            return True
+        except KeyError:
             print(f"未找到项目: {project_id}")
             return False
-        
-        # 更新字段
-        for key, value in updates.items():
-            project[key] = value
-        
-        project["updatedAt"] = datetime.now().isoformat()
-        self._save_data()
-        print(f"项目已更新: {project_id}")
-        return True
     
     def delete_project(self, project_id: str):
         """删除项目"""
-        projects = self.data["projects"]
-        for i, project in enumerate(projects):
-            if project["id"] == project_id:
-                del projects[i]
-                self._save_data()
-                print(f"项目已删除: {project_id}")
-                return True
-        
-        print(f"未找到项目: {project_id}")
-        return False
+        try:
+            self.store.delete(project_id)
+            print(f"项目已删除: {project_id}")
+            return True
+        except KeyError:
+            print(f"未找到项目: {project_id}")
+            return False
     
     def update_progress(self, project_id: str, progress: int):
         """更新项目进度"""
@@ -128,45 +82,25 @@ class ProjectManager:
     
     def get_statistics(self):
         """获取统计信息"""
-        projects = self.data["projects"]
-        total = len(projects)
-        
-        by_status = {}
-        by_priority = {}
-        total_budget = 0
-        total_cost = 0
-        total_revenue = 0
-        
-        for p in projects:
-            # 状态统计
-            status = p.get("status", "unknown")
-            by_status[status] = by_status.get(status, 0) + 1
-            
-            # 优先级统计
-            priority = p.get("priority", "unknown")
-            by_priority[priority] = by_priority.get(priority, 0) + 1
-            
-            # 财务统计
-            if "budget" in p and "planned" in p["budget"]:
-                total_budget += p["budget"]["planned"]
-            if "cost" in p and "total" in p["cost"]:
-                total_cost += p["cost"]["total"]
-            if "revenue" in p and "total" in p["revenue"]:
-                total_revenue += p["revenue"]["total"]
-        
+        stats = self.store.get_statistics()
+        total = stats.get('total', 0)
+        by_status = stats.get('byStatus', {})
+        by_priority = stats.get('byPriority', {})
+        fin = stats.get('financial', {})
+
         print(f"\n=== 项目统计 ===")
         print(f"总项目数: {total}")
         print(f"\n按状态:")
-        for status, count in by_status.items():
-            print(f"  {status}: {count}")
+        for st, count in by_status.items():
+            print(f"  {st}: {count}")
         print(f"\n按优先级:")
-        for priority, count in by_priority.items():
-            print(f"  {priority}: {count}")
+        for pr, count in by_priority.items():
+            print(f"  {pr}: {count}")
         print(f"\n财务概况:")
-        print(f"  总预算: ¥{total_budget:,.2f}")
-        print(f"  总成本: ¥{total_cost:,.2f}")
-        print(f"  总收入: ¥{total_revenue:,.2f}")
-        print(f"  净收益: ¥{total_revenue - total_cost:,.2f}")
+        print(f"  总预算: ¥{float(fin.get('totalBudget') or 0):,.2f}")
+        print(f"  总成本: ¥{float(fin.get('totalCost') or 0):,.2f}")
+        print(f"  总收入: ¥{float(fin.get('totalRevenue') or 0):,.2f}")
+        print(f"  净收益: ¥{float(fin.get('netProfit') or 0):,.2f}")
 
 
 def main():
@@ -174,7 +108,8 @@ def main():
     import argparse
     
     parser = argparse.ArgumentParser(description="项目管理系统CLI")
-    parser.add_argument("--data-file", default="data/projects.json", help="数据文件路径")
+    parser.add_argument("--db-file", default="data/pm.db", help="SQLite 数据库路径")
+    parser.add_argument("--legacy-json", default="data/projects.json", help="Legacy JSON (optional import source)")
     
     subparsers = parser.add_subparsers(dest="command", help="命令")
     
@@ -216,7 +151,7 @@ def main():
         parser.print_help()
         return
     
-    pm = ProjectManager(args.data_file)
+    pm = ProjectManager(args.db_file, legacy_json=args.legacy_json)
     
     if args.command == "list":
         pm.list_projects(status=args.status, priority=args.priority)
