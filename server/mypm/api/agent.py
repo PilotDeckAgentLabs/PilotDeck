@@ -309,9 +309,6 @@ def agent_actions():
                     "action": a,
                 })
 
-        if changed:
-            projects_store.save(data)
-
         return jsonify({
             "success": True,
             "data": {
