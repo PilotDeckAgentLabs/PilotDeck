@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""MyProjectManager package."""
+"""PilotDeck backend package."""
 
 from .app import create_app
 from .config import Config

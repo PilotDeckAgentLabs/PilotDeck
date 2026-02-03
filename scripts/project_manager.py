@@ -1,12 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Project management CLI.
+"""Project management CLI (SQLite)."""
 
-Default backend: SQLite (data/pm.db)
-Legacy backend: JSON (data/projects.json) is supported via one-time import into SQLite.
-"""
-
-import json
 import os
 import sys
 from typing import Dict, Optional
@@ -16,12 +11,11 @@ ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, os.path.join(ROOT_DIR, 'server'))
 
 from mypm.storage import ProjectsStore  # noqa: E402
-from mypm.domain.errors import ProjectNotFoundError  # noqa: E402
 
 class ProjectManager:
-    def __init__(self, db_file: str = "data/pm.db", legacy_json: str = "data/projects.json"):
+    def __init__(self, db_file: str = "data/pm.db"):
         self.db_file = db_file
-        self.store = ProjectsStore(db_file, legacy_projects_json=legacy_json)
+        self.store = ProjectsStore(db_file)
     
     def list_projects(self, status: Optional[str] = None, priority: Optional[str] = None):
         """列出项目"""
@@ -109,7 +103,6 @@ def main():
     
     parser = argparse.ArgumentParser(description="项目管理系统CLI")
     parser.add_argument("--db-file", default="data/pm.db", help="SQLite 数据库路径")
-    parser.add_argument("--legacy-json", default="data/projects.json", help="Legacy JSON (optional import source)")
     
     subparsers = parser.add_subparsers(dest="command", help="命令")
     
@@ -151,7 +144,7 @@ def main():
         parser.print_help()
         return
     
-    pm = ProjectManager(args.db_file, legacy_json=args.legacy_json)
+    pm = ProjectManager(args.db_file)
     
     if args.command == "list":
         pm.list_projects(status=args.status, priority=args.priority)

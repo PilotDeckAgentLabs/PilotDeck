@@ -3,7 +3,7 @@
 
 
 class MyPMError(Exception):
-    """Base exception for MyProjectManager domain errors."""
+    """Base exception for PilotDeck domain errors."""
     pass
 
 

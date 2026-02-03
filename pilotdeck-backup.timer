@@ -1,0 +1,10 @@
+[Unit]
+Description=PilotDeck Daily Backup Timer (runs at midnight)
+Requires=pilotdeck-backup.service
+
+[Timer]
+OnCalendar=*-*-* 00:00:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

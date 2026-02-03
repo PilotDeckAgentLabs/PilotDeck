@@ -25,17 +25,16 @@ def health_check():
 def api_meta():
     """Lightweight, agent-friendly metadata about the service."""
     try:
-        # Get project count
         store = current_app.extensions.get('projects_store')
-        data = store.load()
+        projects, meta = store.list() if store else ([], {})
         
         return jsonify({
             "success": True,
             "data": {
-                "service": "MyProjectManager",
+                "service": "PilotDeck",
                 "apiBase": "/api",
-                "dataLastUpdated": data.get("lastUpdated"),
-                "projectCount": len(data.get("projects", []) or []),
+                "dataLastUpdated": meta.get("lastUpdated"),
+                "projectCount": len(projects),
                 "enums": {
                     "status": PROJECT_STATUSES,
                     "priority": PROJECT_PRIORITIES,

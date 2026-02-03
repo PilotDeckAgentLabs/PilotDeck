@@ -14,6 +14,6 @@ if not exist ".venv" (
 
 python -m pip install -r requirements.txt
 
-python "server\api_server.py"
+python "server\main.py"
 
 endlocal

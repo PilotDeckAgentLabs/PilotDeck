@@ -9,7 +9,6 @@ We also store a handful of indexed columns for fast filtering/sorting.
 from __future__ import annotations
 
 import json
-import os
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -42,44 +41,16 @@ def _meta_set(conn, key: str, value: str) -> None:
 
 
 class ProjectsStore:
-    def __init__(self, db_path: str, *, legacy_projects_json: Optional[str] = None):
+    def __init__(self, db_path: str):
         self.db_path = db_path
-        self.legacy_projects_json = legacy_projects_json
         self._ensure_db()
 
     def _ensure_db(self) -> None:
         conn = connect(self.db_path)
         try:
             migrate(conn)
-            self._maybe_import_legacy(conn)
         finally:
             conn.close()
-
-    def _maybe_import_legacy(self, conn) -> None:
-        # Import only if DB is empty.
-        row = conn.execute('SELECT COUNT(1) AS n FROM projects').fetchone()
-        if row and int(row['n'] or 0) > 0:
-            return
-
-        path = self.legacy_projects_json
-        if not path or not os.path.exists(path):
-            return
-
-        try:
-            with open(path, 'r', encoding='utf-8') as f:
-                raw = json.load(f)
-        except Exception:
-            return
-
-        projects = raw.get('projects') if isinstance(raw, dict) else None
-        if not isinstance(projects, list) or not projects:
-            return
-
-        with conn:
-            for idx, p in enumerate(projects):
-                np, _ = normalize_project(p)
-                self._insert_project(conn, np, sort_order=idx)
-            _meta_set(conn, 'projects.lastUpdated', str(raw.get('lastUpdated') or _now()))
 
     def _insert_project(self, conn, project: Project, *, sort_order: int) -> None:
         payload = dict(project)
@@ -444,43 +415,16 @@ class ProjectsStore:
 
 
 class AgentRunsStore:
-    def __init__(self, db_path: str, *, legacy_runs_json: Optional[str] = None):
+    def __init__(self, db_path: str):
         self.db_path = db_path
-        self.legacy_runs_json = legacy_runs_json
         self._ensure_db()
 
     def _ensure_db(self) -> None:
         conn = connect(self.db_path)
         try:
             migrate(conn)
-            self._maybe_import_legacy(conn)
         finally:
             conn.close()
-
-    def _maybe_import_legacy(self, conn) -> None:
-        row = conn.execute('SELECT COUNT(1) AS n FROM agent_runs').fetchone()
-        if row and int(row['n'] or 0) > 0:
-            return
-
-        path = self.legacy_runs_json
-        if not path or not os.path.exists(path):
-            return
-
-        try:
-            with open(path, 'r', encoding='utf-8') as f:
-                raw = json.load(f)
-        except Exception:
-            return
-
-        runs = raw.get('runs') if isinstance(raw, dict) else None
-        if not isinstance(runs, list) or not runs:
-            return
-
-        with conn:
-            for r in runs:
-                nr, _ = normalize_agent_run(r)
-                self._insert_run(conn, nr)
-            _meta_set(conn, 'agent_runs.lastUpdated', str(raw.get('lastUpdated') or _now()))
 
     def _insert_run(self, conn, run: AgentRun) -> None:
         payload = dict(run)
@@ -634,46 +578,16 @@ class AgentRunsStore:
 
 
 class AgentEventsStore:
-    def __init__(self, db_path: str, *, legacy_events_jsonl: Optional[str] = None):
+    def __init__(self, db_path: str):
         self.db_path = db_path
-        self.legacy_events_jsonl = legacy_events_jsonl
         self._ensure_db()
 
     def _ensure_db(self) -> None:
         conn = connect(self.db_path)
         try:
             migrate(conn)
-            self._maybe_import_legacy(conn)
         finally:
             conn.close()
-
-    def _maybe_import_legacy(self, conn) -> None:
-        row = conn.execute('SELECT COUNT(1) AS n FROM agent_events').fetchone()
-        if row and int(row['n'] or 0) > 0:
-            return
-
-        path = self.legacy_events_jsonl
-        if not path or not os.path.exists(path):
-            return
-
-        # Best-effort import: ignore invalid lines.
-        with conn:
-            try:
-                with open(path, 'r', encoding='utf-8', errors='replace') as f:
-                    for line in f:
-                        s = (line or '').strip()
-                        if not s:
-                            continue
-                        try:
-                            obj = json.loads(s)
-                        except Exception:
-                            continue
-                        if not isinstance(obj, dict):
-                            continue
-                        evt = normalize_agent_event(obj)
-                        self._insert_event(conn, evt)
-            except FileNotFoundError:
-                return
 
     def _insert_event(self, conn, evt: AgentEvent) -> None:
         payload = dict(evt)
@@ -705,7 +619,7 @@ class AgentEventsStore:
         finally:
             conn.close()
 
-    def exists(self, event_id: str, max_lines: int = 5000) -> Optional[Dict[str, Any]]:  # noqa: ARG002
+    def exists(self, event_id: str) -> Optional[Dict[str, Any]]:
         if not event_id:
             return None
         conn = connect(self.db_path)
@@ -730,8 +644,7 @@ class AgentEventsStore:
         typ: Optional[str],
         since_dt,
         limit: int,
-        tail_lines: int,
-    ) -> List[Dict[str, Any]]:  # noqa: ARG002
+    ) -> List[Dict[str, Any]]:
         # since_dt is a datetime or None (parsed in API layer).
         since = since_dt.isoformat() if since_dt else None
 

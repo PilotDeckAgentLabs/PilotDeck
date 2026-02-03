@@ -1,56 +1,44 @@
-# MyProjectManager
+# PilotDeck
 
-一个基于 GitHub 仓库的“个人项目统一管理”Demo：
-- 项目数据运行时使用本地嵌入式 `SQLite`（WAL）存储（无需独立 DB 服务，支持并发/事务/索引）
-- 可选：保留 legacy `JSON` 文件作为导入源/人工可读备份
-- 提供 Python CLI 脚本做数据管理（可选）
-- 提供 Flask 后端 API + 原生 Web 前端，实现项目的增删改查与统计展示
+面向开发者个人与团队内部的轻量项目管理与 Agent 协作控制台。
 
-## 功能
+- 快速部署、自托管：Flask + SQLite 单文件数据库，无需独立 DB 服务
+- Agent 深度介入：Agent 可通过 API 记录 runs/events/actions，并以可审计的方式更新项目进度与里程碑
+- 适合并行推进：同时管理多个项目与多个 Agent，减少“口头同步”和“进度漂移”
 
-- 项目列表展示：名称、状态、优先级、分类、进度、预算、标签
-- 条件筛选：状态 / 优先级 / 分类
-- CRUD：新增 / 编辑 / 删除项目
-- 统计：按状态/优先级/分类聚合 + 财务汇总
+## 适用场景
 
-## 目录结构
+- 个人/独立开发：跟踪多个项目的状态、优先级、成本与收益
+- 团队内部使用：在内网/私有环境共享项目台账与执行记录，用于协作与交接
+- Agent 驱动开发流程：让 Agent 自动推进项目并写回进度、里程碑与变更原因
+- 多 Agent 并行：通过 `updatedAt + ifUpdatedAt` 的乐观并发控制，降低并发写入冲突
 
-- `data/`：本地数据目录（默认被代码仓库忽略）
-- `data/pm.db`：SQLite 主数据库（运行时主存储，推荐）
-- `data/pm_backup.db`：SQLite 快照文件（单文件一致性备份，可上传到对象存储或其它备份介质）
-- `data/projects.json`：legacy 项目数据（可选，用于一次性导入或人工可读备份）
-- `data/agent_runs.json`：legacy Agent Runs（可选，用于一次性导入）
-- `data/agent_events.jsonl`：legacy Agent Events（可选，用于一次性导入）
-- `data/schema.json`：数据结构 JSON Schema（用于约束字段含义/结构）
-- `scripts/project_manager.py`：CLI 数据管理脚本（增删改查/统计）
-- `server/api_server.py`：后端 API + 静态前端托管
-- `web/index.html`：前端页面
-- `web/css/style.css`：前端样式
-- `web/js/app.js`：前端逻辑（调用 API）
+## 核心能力
 
-## 环境要求
+- 项目管理：状态、优先级、分类、进度、标签、成本/收益
+- Agent API：
+  - runs：一次工作流/会话的容器
+  - events：项目级执行轨迹（可审计、可回放、便于复盘）
+  - actions：面向 Agent 的语义化操作入口（自动写 event、支持幂等）
+- 备份/恢复（最简单可理解的方式）：
+  - 导出备份：浏览器下载 SQLite 快照文件
+  - 从备份恢复：上传快照文件覆盖当前数据库
 
-- Python 3.8+（必需，建议 3.10+）
+## 架构概览
 
-说明：本项目依赖（`requirements.txt`）要求 Python 3.8+。Linux 服务器上推荐使用 `/usr/local/bin/python3` 指向 Python 3.8+，避免改动 `/usr/bin/python`（可能影响 yum / 系统脚本）。
+- 后端：`server/mypm`（Flask API）
+- 数据库：SQLite（默认 `data/pm.db`）
+- 前端：
+  - 旧 UI（无需构建）：`/`
+  - 新 UI（Vue 3，构建后可用）：`/app`
 
-## 快速开始（本地运行）
+文档：
+- Agent 客户端对接：`docs/AGENT_API.md`
+- 数据库运维（备份/恢复/排障）：`docs/DB_OPS.md`
 
-### 0) 准备数据目录（一次性）
-
-本项目将 `data/` 作为本地数据目录（代码仓库默认忽略该目录）。
-
-在代码仓库根目录执行：
-
-```bash
-mkdir -p data
-```
-
-首次启动后端时会自动创建 `data/pm.db`（SQLite）。如果你还保留 legacy `data/projects.json`，会在首次初始化时自动尝试导入。
+## 快速开始（本地）
 
 ### 1) 安装依赖
-
-在仓库根目录执行：
 
 ```bash
 python -m pip install -r requirements.txt
@@ -58,242 +46,68 @@ python -m pip install -r requirements.txt
 
 ### 2) 启动服务
 
-方式 A（直接运行）：
+```bash
+python server/main.py
+```
+
+默认访问：
+- UI：`http://localhost:8689/`
+- API：`http://localhost:8689/api`
+
+### 2.1) 构建新 UI（可选）
+
+构建后可访问：`http://localhost:8689/app`
 
 ```bash
-python server/api_server.py
+cd frontend
+npm install
+npm run build
 ```
 
-可选环境变量：
+### 3) 可选环境变量
+
+- `PM_PORT`：端口（默认 8689）
+- `PM_DEBUG`：调试（默认 0）
+- `PM_DB_FILE`：SQLite DB 文件路径（默认 `data/pm.db`）
+- `PM_ADMIN_TOKEN`：运维口令（备份/恢复/部署等敏感接口需提供请求头 `X-PM-Token`）
+- `PM_AGENT_TOKEN`：Agent 口令（设置后 Agent API 需提供 `X-PM-Agent-Token`）
+
+## 备份与恢复（推荐从 UI 开始）
+
+1) 进入 UI 的“运维”
+2) 填写 `PM_ADMIN_TOKEN`
+3) 点击：
+   - “导出备份（下载）”：下载 `pm_backup_*.db`
+   - “从备份恢复”：选择并上传 `pm_backup_*.db`
+
+更完整说明与排障：`docs/DB_OPS.md`
+
+## 部署到 Linux 服务器（可选）
+
+仓库提供 `deploy_pull_restart.sh` 一键拉取代码、安装依赖、构建前端并重启服务。
 
 ```bash
-export PM_PORT=8689   # 端口，默认 8689
-export PM_DEBUG=1     # 调试模式：1 开启，默认关闭
-export PM_DB_FILE=...  # SQLite DB 路径（默认 data/pm.db）
-```
-
-方式 B（Windows 脚本）：
-
-```bat
-start_server.bat
-```
-
-或 PowerShell：
-
-```powershell
-start_server.ps1
-```
-
-## 数据存储与备份（SQLite）
-
-### 自动导入（首次切换）
-
-当 `data/pm.db` 为空或不存在时，服务启动会尝试从 legacy 文件导入：
-
-- `data/projects.json`
-- `data/agent_runs.json`
-- `data/agent_events.jsonl`
-
-导入是 best-effort：缺失/损坏文件会被跳过。
-
-### 备份（推荐）
-
-SQLite WAL 模式下，**直接拷贝 `pm.db` 并不总是安全备份**（可能遗漏 WAL 中尚未 checkpoint 的事务）。
-
-推荐使用脚本生成一致性快照：
-
-```bash
-python scripts/sqlite_backup.py --db data/pm.db --out data/pm_backup.db
-```
-
-也可以使用封装脚本：
-
-```bash
-./backup_db_snapshot.sh
-```
-
-更完整的运维手册见：`docs/DB_OPS.md`
-
-## 部署到云服务器（Linux）
-
-本项目默认监听 `8689`。服务器部署场景使用 `deploy_pull_restart.sh` 一键拉取、安装依赖并重启服务。
-
-仓库内已提供以下运维脚本：
-
-1) 从 GitHub 拉取更新并部署、重启：`deploy_pull_restart.sh`
-2) 生成数据库一致性快照：`backup_db_snapshot.sh`
-3) 从快照恢复数据库：`restore_db_snapshot.sh`
-4) 设置每天自动生成快照：`setup_auto_backup.sh`（推荐）
-
-脚本说明见脚本文件头部注释。
-
-### 1) 服务器初始化（一次性）
-
-确保服务器已安装 Python 3.8+（例如已安装 `python3.8`），并按以下方式提供 `python3`：
-
-```bash
-ln -sf /usr/local/bin/python3.8 /usr/local/bin/python3
-ln -sf /usr/local/bin/pip3.8 /usr/local/bin/pip3
-python3 -V
-```
-
-注意：不要把 `/usr/bin/python` 指向 3.8（可能影响 yum / 系统脚本）。
-
-### 2) 部署/更新（推荐运维方式）
-
-在服务器仓库根目录执行：
-
-```bash
-# 方式 A：直接运行 deploy 脚本（推荐）
 sudo ./deploy_pull_restart.sh
-
-# 方式 B：从前端触发（Web UI 管理界面）
-# 点击 "部署：拉取更新并重启" 按钮
-# 注意：前端触发需要后续手动设置自动备份（仅首次）
 ```
 
-**重要**：首次部署或前端触发部署后，需要**手动设置自动备份**（仅一次）：
+注：脚本会尝试安装 systemd service；也支持无 systemd 的 nohup 模式。
+
+### （可选）启用每日自动备份
+
+自动备份默认不启用。需要你在服务器上手动安装 systemd timer：
 
 ```bash
 sudo ./setup_auto_backup.sh
 ```
 
-脚本行为：
-- `git pull --rebase` 拉取最新代码
-- 使用 `${ROOT}/.venv` 创建虚拟环境并安装 `requirements.txt`
-- 若存在 systemd：
-  - 自动写入/启用 `/etc/systemd/system/myprojectmanager.service` 并重启
-  - **使用 sudo 运行时**：自动设置每天定时生成数据库快照（幂等）
-  - **前端触发或非 root 运行时**：提示手动运行 `setup_auto_backup.sh`
-- 若无 systemd：使用 `nohup` 启动（日志写入 `server.log`，PID 写入 `.server.pid`）
+如果你希望自动上传到云端（例如 OSS 预签名 URL / 自建上传服务），编辑：`/etc/pilotdeck/backup.env`。
 
-### 3) 常用运维命令（systemd）
+## 命名说明
 
-```bash
-systemctl status myprojectmanager
-systemctl restart myprojectmanager
-journalctl -u myprojectmanager -f
-```
+代码层面仍可能使用历史名称（例如 systemd service、包名等）。本 README 将产品对外名称统一为 PilotDeck。
 
-### 4) 自动数据备份（重要）
+## 贡献与扩展方向
 
-#### 首次设置（仅需一次）
-
-在服务器上以 **root 权限**运行：
-
-```bash
-sudo ./setup_auto_backup.sh
-```
-
-这将：
-- 安装 systemd timer（每天 0 点生成 SQLite 快照文件 `data/pm_backup.db`）
-- 自动启用并启动定时器
-- 显示下次备份时间
-
-**为什么需要手动运行一次**？
-- 定时器需要安装到 `/etc/systemd/system/`，需要 root 权限
-- 前端触发的部署运行在普通用户权限下，无法自动安装
-- **运行一次后永久生效**，后续部署会自动保持定时器运行
-
-#### 验证安装成功
-
-```bash
-# 查看定时器状态
-systemctl status myprojectmanager-backup.timer
-
-# 查看下次运行时间
-systemctl list-timers myprojectmanager-backup.timer
-```
-
-预期输出：
-```
-NEXT                          LEFT        LAST  PASSED  UNIT                           ACTIVATES
-Sat 2026-01-31 00:00:00 CST   3h 27min left  -     -     myprojectmanager-backup.timer  myprojectmanager-backup.service
-```
-
-#### 管理自动备份（可选）
-
-```bash
-# 查看定时器状态和下次运行时间
-systemctl status myprojectmanager-backup.timer
-systemctl list-timers myprojectmanager-backup.timer
-
-# 查看备份日志
-journalctl -u myprojectmanager-backup.service -f
-
-# 手动触发一次备份（测试）
-sudo systemctl start myprojectmanager-backup.service
-
-# 临时禁用自动备份
-sudo systemctl stop myprojectmanager-backup.timer
-sudo systemctl disable myprojectmanager-backup.timer
-
-# 重新启用（下次 deploy 也会自动启用）
-sudo systemctl enable myprojectmanager-backup.timer
-sudo systemctl start myprojectmanager-backup.timer
-```
-
-**高级管理**（使用管理脚本）：
-
-**高级管理**（使用管理脚本）：
-
-```bash
-# 使用独立管理脚本（与 deploy 脚本效果相同）
-sudo ./setup_auto_backup.sh status   # 查看状态
-sudo ./setup_auto_backup.sh disable  # 禁用
-sudo ./setup_auto_backup.sh remove   # 完全移除
-```
-
-**备份特性**：
-- **触发时间**：每天 00:00（午夜）
-- **Persistent**：系统关机错过的备份会在下次启动时自动执行
-- **RandomizedDelay**：随机延迟最多 30 分钟，避免负载集中
-- **自动恢复**：每次运行 `deploy_pull_restart.sh` 都会确保定时器正常运行
-
-### 5) 访问
-
-- Web 界面：`http://<server-ip>:8689/`
-- API 基地址：`http://<server-ip>:8689/api`
-- 健康检查：`http://<server-ip>:8689/api/health`
-
-本地默认端口为 `8689`（除非设置了 `PM_PORT`）。
-
-## API 说明（简要）
-
-- `GET /api/projects`：获取项目列表（支持 `status` / `priority` / `category` 查询参数）
-- `GET /api/projects/{id}`：获取单个项目
-- `POST /api/projects`：创建项目
-- `PUT /api/projects/{id}`：更新项目
-- `DELETE /api/projects/{id}`：删除项目
-- `GET /api/stats`：统计信息
-
-## CLI 脚本（可选）
-
-列出项目：
-
-```bash
-python scripts/project_manager.py list
-```
-
-查看统计：
-
-```bash
-python scripts/project_manager.py stats
-```
-
-添加项目：
-
-```bash
-python scripts/project_manager.py add --name "示例项目" --status planning --priority medium --category "内容创作"
-```
-
-更新项目：
-
-```bash
-python scripts/project_manager.py update proj-001 --progress 50 --status in-progress
-```
-
-## 数据维护建议
-
-- 你可以直接编辑 `data/projects.json`（JSON），并在 `data/` 目录内通过 Git 提交记录每次变更
-- 如果多人协作：建议以 PR 的方式合并数据变更，避免冲突
+- 更完善的 Agent Skill 管理与项目推进流程编排
+- 更清晰的项目模型（里程碑/交付物/文档生成）
+- 更细粒度的权限与审计

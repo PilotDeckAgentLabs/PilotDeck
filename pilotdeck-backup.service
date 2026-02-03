@@ -1,0 +1,18 @@
+[Unit]
+Description=PilotDeck Daily SQLite Snapshot
+After=network.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/root/PilotDeck
+
+# Optional environment file (create it if you want cloud upload, custom paths, etc.)
+# Example path: /etc/pilotdeck/backup.env
+EnvironmentFile=-/etc/pilotdeck/backup.env
+
+ExecStart=/bin/bash /root/PilotDeck/backup_db_snapshot.sh
+
+SyslogIdentifier=pilotdeck-backup
+
+[Install]
+WantedBy=multi-user.target

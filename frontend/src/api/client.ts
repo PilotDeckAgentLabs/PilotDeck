@@ -1,4 +1,4 @@
-// Typed API Client for MyProjectManager
+// Typed API Client for PilotDeck
 import type {
   Project,
   AgentRun,

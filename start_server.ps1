@@ -11,4 +11,4 @@ if (Test-Path (Join-Path $root '.venv\Scripts\Activate.ps1')) {
 }
 
 python -m pip install -r requirements.txt
-python (Join-Path $root 'server\api_server.py')
+python (Join-Path $root 'server\main.py')

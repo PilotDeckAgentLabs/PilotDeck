@@ -52,33 +52,7 @@ python server/main.py
 
 ---
 
-## 2. 我想从旧 JSON 切换到 SQLite（一次性）
-
-### 目标
-把 legacy 数据导入 SQLite，之后运行时只使用 SQLite。
-
-### 背景
-历史版本用：
-- `data/projects.json`
-- `data/agent_runs.json`
-- `data/agent_events.jsonl`
-
-当前版本默认使用 SQLite：
-- `data/pm.db`
-
-### 动作（最简单做法）
-
-1) 确保 legacy 文件仍在 `data/` 下（至少 `projects.json`）
-2) 删除或移动旧的 `data/pm.db`（如果你希望重新导入）
-3) 启动服务：`python server/main.py`
-
-服务启动时会在 DB 为空的情况下 best-effort 导入 legacy 文件：
-- 文件缺失/损坏会被跳过
-- 导入完成后，运行时以 SQLite 为准
-
----
-
-## 3. 我想做一次备份（手动 / 立刻）
+## 2. 我想做一次备份（手动 / 立刻）
 
 ### 目标
 生成一个**单文件**、可拷贝/可上传的数据库快照。
@@ -126,7 +100,7 @@ PM_BACKUP_FILE="data/pm_backup_$(date -u +%Y%m%dT%H%M%SZ).db" ./backup_db_snapsh
 
 ---
 
-## 3.1 我想“迁移到新机器”（换服务器/重装系统）
+## 2.1 我想“迁移到新机器”（换服务器/重装系统）
 
 ### 目标
 在新机器上恢复到旧机器的同一份数据。
@@ -146,12 +120,14 @@ PM_BACKUP_FILE="data/pm_backup_$(date -u +%Y%m%dT%H%M%SZ).db" ./backup_db_snapsh
 
 ---
 
-## 4. 我想设置“每天自动备份”（Linux/systemd）
+## 3. 我想设置“每天自动备份”（Linux/systemd，可选）
 
 ### 目标
 每天 00:00 自动生成一次 `data/pm_backup.db` 快照。
 
 ### 动作
+
+说明：自动备份默认不启用。你需要手动安装 systemd timer。
 
 1) 用 root 安装 timer
 
@@ -168,14 +144,14 @@ sudo ./setup_auto_backup.sh status
 3) 查看日志
 
 ```bash
-journalctl -u myprojectmanager-backup.service -f
+journalctl -u pilotdeck-backup.service -f
 ```
 
 说明：当前 timer 只负责生成快照；上传对象存储的步骤你可以后续再加（或等项目集成）。
 
 ---
 
-## 5. 我想恢复数据（从快照）
+## 4. 我想恢复数据（从快照）
 
 ### 目标
 把系统回滚到某个快照时刻的数据状态。
@@ -188,7 +164,7 @@ journalctl -u myprojectmanager-backup.service -f
 
 1) 停服务
 
-- systemd：`sudo systemctl stop myprojectmanager`
+- systemd：`sudo systemctl stop pilotdeck`
 - nohup 模式：停掉对应 PID
 
 2) 执行恢复
@@ -203,7 +179,24 @@ journalctl -u myprojectmanager-backup.service -f
 
 3) 启服务
 
-`sudo systemctl start myprojectmanager`
+`sudo systemctl start pilotdeck`
+
+### （可选）自动上传到云端
+
+本项目不会默认绑定任何云厂商。你可以通过环境变量配置上传 endpoint（例如 OSS 的预签名 URL，或你自建的上传服务）：
+
+- `PM_BACKUP_UPLOAD_URL`
+- `PM_BACKUP_UPLOAD_TOKEN`（可选）
+- `PM_BACKUP_UPLOAD_METHOD`（默认 PUT）
+
+推荐方式：在服务器创建 `/etc/pilotdeck/backup.env`，写入上述环境变量，然后重启 timer：
+
+```bash
+sudo mkdir -p /etc/pilotdeck
+sudo nano /etc/pilotdeck/backup.env
+
+sudo systemctl restart pilotdeck-backup.timer
+```
 
 ### 动作（Web UI / 最简单）
 
@@ -220,7 +213,7 @@ journalctl -u myprojectmanager-backup.service -f
 
 ---
 
-## 6. 我想确认数据库是否健康（排查用）
+## 5. 我想确认数据库是否健康（排查用）
 
 ### 目标
 确认 DB 文件可读、结构正常、没有明显损坏。
@@ -244,9 +237,9 @@ PY
 
 ---
 
-## 7. 常见问题（按现象排查）
+## 6. 常见问题（按现象排查）
 
-### 7.1 “database is locked” / 请求很慢
+### 6.1 “database is locked” / 请求很慢
 
 可能原因：
 - 有多个进程同时写 DB，锁竞争严重
@@ -257,14 +250,14 @@ PY
 - 优先用 `scripts/sqlite_backup.py` 做备份（避免粗暴复制文件）
 - 需要时再提升 `busy_timeout`（代码已默认 5s）
 
-### 7.2 `data/` 目录里出现 `pm.db-wal` / `pm.db-shm`
+### 6.2 `data/` 目录里出现 `pm.db-wal` / `pm.db-shm`
 
 这是 WAL 模式的正常文件。
 
 注意：
 - 不要把这两个文件当作“需要单独备份的增量”；最稳妥的是用快照脚本生成单文件 `pm_backup.db`
 
-### 7.3 升级代码后 DB 结构怎么办？
+### 6.3 升级代码后 DB 结构怎么办？
 
 本项目在启动时会自动执行迁移（基于 `PRAGMA user_version`）。
 
@@ -272,18 +265,6 @@ PY
 1) 升级代码
 2) 启动服务
 
-如果升级前后你担心风险：先做一次快照备份（见第 3 节）。
+如果升级前后你担心风险：先做一次快照备份（见第 2 节）。
 
 ---
-
-## 8. “弃用 Git 管 data/” 之后，哪些东西不再使用？
-
-以下脚本已弃用，仅保留提示：
-- `push_data_to_github.sh`
-- `pull_data_repo.sh`
-- `merge_data_sync_to_main.sh`
-
-替代方案：
-- 备份：`backup_db_snapshot.sh` / `scripts/sqlite_backup.py`
-- 恢复：`restore_db_snapshot.sh`
-- 上传对象存储：暂未集成（你可以先用自己的工具上传 `data/pm_backup.db`）

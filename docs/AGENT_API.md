@@ -1,4 +1,4 @@
-# Agent API (MyProjectManager)
+# Agent API (PilotDeck)
 
 This document is written for automation/agent clients.
 
@@ -124,7 +124,7 @@ Returns aggregated counts and financial totals.
 
 ## Agent Timeline (Events)
 
-Events are append-only and stored in `data/agent_events.jsonl`.
+Events are append-only and stored in SQLite (`data/pm.db`).
 
 Why events exist (important):
 
@@ -170,7 +170,6 @@ Query params:
 - `projectId`, `runId`, `agentId`, `type` (optional filters)
 - `since` (optional ISO timestamp)
 - `limit` (default 200, max 2000)
-- `tail` (how many lines to scan from the log, default 2000, max 20000)
 
 Example:
 
@@ -180,7 +179,7 @@ curl -s 'http://localhost:8689/api/agent/events?projectId=proj-aaa&limit=50'
 
 ## Agent Runs (Sessions)
 
-Runs are stored in `data/agent_runs.json`.
+Runs are stored in SQLite (`data/pm.db`).
 
 Use a run to group a series of edits/actions.
 

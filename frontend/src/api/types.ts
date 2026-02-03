@@ -1,4 +1,4 @@
-// API Type Definitions for MyProjectManager
+// API Type Definitions for PilotDeck
 // Based on server/mypm/domain/models.py
 
 // ===== Project Types =====

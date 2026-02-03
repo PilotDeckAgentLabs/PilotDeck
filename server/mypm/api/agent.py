@@ -382,7 +382,6 @@ def agent_list_events():
         typ = request.args.get('type')
         since = request.args.get('since')
         limit = request.args.get('limit')
-        tail = request.args.get('tail')
 
         since_dt = _parse_iso(str(since or '').strip())
         lim = 200
@@ -392,13 +391,6 @@ def agent_list_events():
             except Exception:
                 lim = 200
 
-        max_lines = 2000
-        if tail:
-            try:
-                max_lines = max(100, min(20000, int(tail)))
-            except Exception:
-                max_lines = 2000
-
         events = events_store.list(
             project_id=project_id,
             run_id=run_id,
@@ -406,7 +398,6 @@ def agent_list_events():
             typ=typ,
             since_dt=since_dt,
             limit=lim,
-            tail_lines=max_lines,
         )
 
         return jsonify({"success": True, "data": events, "total": len(events)})
