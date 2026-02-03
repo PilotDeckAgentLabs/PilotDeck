@@ -100,6 +100,44 @@ async function opsFetch<T = any>(
   })
 }
 
+async function opsFetchBlob(
+  path: string,
+  token: string,
+  options: RequestInit = {}
+): Promise<{ blob: Blob; filename: string }>
+{
+  if (!token) {
+    throw new ApiError('请先填写管理口令（PM_ADMIN_TOKEN）')
+  }
+
+  const url = `${API_BASE_URL}${path}`
+  const res = await fetch(url, {
+    ...options,
+    headers: {
+      ...(options.headers || {}),
+      'X-PM-Token': token,
+    },
+  })
+
+  if (!res.ok) {
+    const text = await res.text()
+    let json: any = null
+    try {
+      json = text ? JSON.parse(text) : null
+    } catch {
+      json = null
+    }
+    const errMsg = (json && (json.error || json.message)) || `HTTP ${res.status}`
+    throw new ApiError(String(errMsg), res.status, json)
+  }
+
+  const dispo = res.headers.get('Content-Disposition') || ''
+  const m = dispo.match(/filename=([^;]+)/i)
+  const filename = m ? String(m[1]).replace(/^"|"$/g, '') : `pm_backup_${Date.now()}.db`
+  const blob = await res.blob()
+  return { blob, filename }
+}
+
 // ===== Projects API =====
 
 export async function getProjects(filters?: ProjectFilters): Promise<Project[]> {
@@ -250,6 +288,17 @@ export async function getHealth(): Promise<HealthCheck> {
 
 export async function opsPullRestart(token: string): Promise<{ output: string }> {
   return opsFetch('/admin/pull-restart', token, { method: 'POST' })
+}
+
+export async function opsDownloadBackup(token: string): Promise<{ blob: Blob; filename: string }> {
+  return opsFetchBlob('/admin/backup', token, { method: 'GET' })
+}
+
+export async function opsRestoreFromBackup(token: string, file: File): Promise<any> {
+  const form = new FormData()
+  form.append('file', file)
+  // NOTE: Do not set Content-Type manually for multipart.
+  return opsFetch('/admin/restore', token, { method: 'POST', body: form, headers: {} })
 }
 
 export async function opsGetDeployLog(token: string): Promise<OpsLogResponse> {

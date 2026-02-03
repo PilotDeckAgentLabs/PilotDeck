@@ -1114,16 +1114,100 @@ function opsStopDeployLog() {
   }
 }
 
-function opsBackupDb() {
-  setOpsOutput('[INFO] Not implemented yet: database backup.\n')
-  appendOpsOutput('[HINT] Use: python scripts/sqlite_backup.py --db data/pm.db --out data/pm_backup.db\n')
-  showToast('备份功能即将支持', 'info')
+async function opsBackupDb() {
+  try {
+    const token = String($('opsToken') && $('opsToken').value ? $('opsToken').value : '').trim()
+    if (!token) throw new Error('请先填写管理口令（PM_ADMIN_TOKEN）')
+
+    setOpsOutput('[INFO] 正在生成备份并下载...\n')
+
+    const res = await fetch('/api/admin/backup', {
+      method: 'GET',
+      headers: { 'X-PM-Token': token },
+    })
+
+    if (!res.ok) {
+      const txt = await res.text()
+      let msg = `HTTP ${res.status}`
+      try {
+        const j = txt ? JSON.parse(txt) : null
+        msg = (j && (j.error || j.message)) ? String(j.error || j.message) : msg
+      } catch (e) {
+        // ignore
+      }
+      throw new Error(msg)
+    }
+
+    const blob = await res.blob()
+    const dispo = res.headers.get('Content-Disposition') || ''
+    const m = dispo.match(/filename=([^;]+)/i)
+    const filename = m ? String(m[1]).replace(/^"|"$/g, '') : `pm_backup_${Date.now()}.db`
+
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
+
+    appendOpsOutput(`[INFO] 下载完成: ${filename}\n`)
+    showToast('备份已下载', 'success')
+  } catch (e) {
+    appendOpsOutput(`\n[ERROR] ${e.message}\n`)
+    showToast('备份失败', 'error')
+  }
 }
 
-function opsRestoreDb() {
-  setOpsOutput('[INFO] Not implemented yet: database restore.\n')
-  appendOpsOutput('[HINT] Stop service, replace data/pm.db, then restart.\n')
-  showToast('恢复功能即将支持', 'info')
+async function opsRestoreDb() {
+  try {
+    const token = String($('opsToken') && $('opsToken').value ? $('opsToken').value : '').trim()
+    if (!token) throw new Error('请先填写管理口令（PM_ADMIN_TOKEN）')
+
+    if (!confirm('将从备份文件恢复数据库。该操作会覆盖当前数据，且可能导致正在使用的页面短暂错误。确定继续吗？')) {
+      return
+    }
+
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = '.db,application/octet-stream'
+    input.onchange = async () => {
+      const file = input.files && input.files[0] ? input.files[0] : null
+      if (!file) return
+
+      setOpsOutput(`[INFO] 正在上传备份并恢复... (${file.name})\n`)
+
+      const form = new FormData()
+      form.append('file', file)
+
+      const res = await fetch('/api/admin/restore', {
+        method: 'POST',
+        headers: { 'X-PM-Token': token },
+        body: form,
+      })
+
+      const txt = await res.text()
+      let json = null
+      try { json = txt ? JSON.parse(txt) : null } catch (e) { json = null }
+
+      if (!res.ok) {
+        const msg = (json && (json.error || json.message)) ? String(json.error || json.message) : `HTTP ${res.status}`
+        throw new Error(msg)
+      }
+
+      appendOpsOutput('[INFO] 恢复完成。建议刷新页面。\n')
+      if (json && json.data && json.data.previousDbBackup) {
+        appendOpsOutput(`[INFO] 已备份旧库: ${json.data.previousDbBackup}\n`)
+      }
+      showToast('恢复完成', 'success')
+    }
+
+    input.click()
+  } catch (e) {
+    appendOpsOutput(`\n[ERROR] ${e.message}\n`)
+    showToast('恢复失败', 'error')
+  }
 }
 
 async function opsPullRestart() {

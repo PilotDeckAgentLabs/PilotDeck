@@ -8,13 +8,21 @@ Notes:
 
 import os
 import subprocess
-from flask import Blueprint, jsonify, request, current_app
+import sqlite3
+import tempfile
+import threading
+import shutil
+from datetime import datetime
+from flask import Blueprint, jsonify, request, current_app, send_file, after_this_request
 
 from ..domain.auth import require_admin
 from ..storage.common import read_last_lines
 
 
 bp = Blueprint('admin_ops', __name__)
+
+
+_restore_lock = threading.Lock()
 
 
 def _get_deploy_service():
@@ -27,35 +35,170 @@ def _get_root_dir():
     return current_app.config.get('ROOT_DIR')
 
 
-@bp.route('/backup', methods=['POST'])
-def admin_backup_placeholder():
-    """Backup placeholder (not implemented yet).
+def _get_db_file() -> str:
+    # Config is loaded via app.config.from_object(Config())
+    # so keys like DB_FILE exist in current_app.config.
+    return str(current_app.config.get('DB_FILE') or '').strip()
 
-    Future: create a consistent SQLite snapshot and upload it to object storage.
+
+def _now_utc_compact() -> str:
+    return datetime.utcnow().strftime('%Y%m%dT%H%M%SZ')
+
+
+def _sqlite_integrity_ok(path: str) -> bool:
+    try:
+        conn = sqlite3.connect(path, timeout=5.0)
+        try:
+            row = conn.execute('PRAGMA integrity_check;').fetchone()
+            return bool(row and str(row[0]) == 'ok')
+        finally:
+            conn.close()
+    except Exception:
+        return False
+
+
+@bp.route('/backup', methods=['GET'])
+def admin_download_backup():
+    """Export a consistent SQLite snapshot as a downloadable file."""
+    ok, err = require_admin()
+    if not ok:
+        return err
+
+    db_file = _get_db_file()
+    if not db_file or not os.path.exists(db_file):
+        return jsonify({
+            "success": False,
+            "error": "DB file not found",
+            "data": {"dbFile": db_file},
+        }), 404
+
+    fd, tmp_path = tempfile.mkstemp(prefix='pm_backup_', suffix='.db')
+    os.close(fd)
+
+    @after_this_request
+    def _cleanup(resp):
+        try:
+            if os.path.exists(tmp_path):
+                os.remove(tmp_path)
+        except Exception:
+            pass
+        return resp
+
+    try:
+        src = sqlite3.connect(db_file, timeout=5.0)
+        try:
+            src.execute('PRAGMA foreign_keys=ON;')
+            src.execute('PRAGMA busy_timeout=5000;')
+            dst = sqlite3.connect(tmp_path, timeout=5.0)
+            try:
+                src.backup(dst)
+            finally:
+                dst.close()
+        finally:
+            src.close()
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": f"Failed to create backup: {str(e)}",
+        }), 500
+
+    name = f"pm_backup_{_now_utc_compact()}.db"
+    return send_file(
+        tmp_path,
+        as_attachment=True,
+        download_name=name,
+        mimetype='application/octet-stream',
+        max_age=0,
+    )
+
+
+@bp.route('/restore', methods=['POST'])
+def admin_restore_from_upload():
+    """Restore database from an uploaded SQLite snapshot.
+
+    Request: multipart/form-data with file field named "file".
     """
     ok, err = require_admin()
     if not ok:
         return err
 
-    return jsonify({
-        "success": False,
-        "error": "Not implemented: backup is not wired yet",
-        "hint": "Use: python scripts/sqlite_backup.py --db data/pm.db --out data/pm_backup.db",
-    }), 501
+    db_file = _get_db_file()
+    if not db_file:
+        return jsonify({
+            "success": False,
+            "error": "DB file path not configured",
+        }), 500
 
+    up = request.files.get('file')
+    if not up:
+        return jsonify({
+            "success": False,
+            "error": "Missing upload file (field name: file)",
+        }), 400
 
-@bp.route('/restore', methods=['POST'])
-def admin_restore_placeholder():
-    """Restore placeholder (not implemented yet)."""
-    ok, err = require_admin()
-    if not ok:
-        return err
+    db_dir = os.path.dirname(db_file) or '.'
+    os.makedirs(db_dir, exist_ok=True)
 
-    return jsonify({
-        "success": False,
-        "error": "Not implemented: restore is not wired yet",
-        "hint": "Stop service, replace data/pm.db with a known-good snapshot, then restart.",
-    }), 501
+    # Save to a temp file in the SAME directory as db_file.
+    # This allows atomic os.replace on Windows (cross-volume replace can fail).
+    fd, tmp_path = tempfile.mkstemp(prefix='.pm_restore_', suffix='.db', dir=db_dir)
+    os.close(fd)
+    try:
+        up.save(tmp_path)
+    except Exception as e:
+        try:
+            os.remove(tmp_path)
+        except Exception:
+            pass
+        return jsonify({
+            "success": False,
+            "error": f"Failed to save upload: {str(e)}",
+        }), 400
+
+    try:
+        if not _sqlite_integrity_ok(tmp_path):
+            return jsonify({
+                "success": False,
+                "error": "Invalid SQLite backup (integrity_check failed)",
+            }), 400
+
+        with _restore_lock:
+            # Best-effort: mark restore in progress so other requests can be blocked.
+            current_app.extensions.setdefault('maintenance', {})
+            current_app.extensions['maintenance']['restoring_db'] = True
+            try:
+                ts = _now_utc_compact()
+                backup_old = f"{db_file}.bak.{ts}"
+                if os.path.exists(db_file):
+                    os.replace(db_file, backup_old)
+
+                # Replace main db atomically.
+                os.replace(tmp_path, db_file)
+
+                # Remove sidecars if any.
+                for side in (db_file + '-wal', db_file + '-shm'):
+                    try:
+                        if os.path.exists(side):
+                            os.remove(side)
+                    except Exception:
+                        pass
+
+                return jsonify({
+                    "success": True,
+                    "data": {
+                        "dbFile": db_file,
+                        "previousDbBackup": backup_old if os.path.exists(backup_old) else None,
+                    }
+                })
+            finally:
+                current_app.extensions['maintenance']['restoring_db'] = False
+    finally:
+        # tmp_path may have been moved into place via os.replace.
+        try:
+            if os.path.exists(tmp_path):
+                os.remove(tmp_path)
+        except Exception:
+            pass
 
 
 @bp.route('/deploy', methods=['POST'])

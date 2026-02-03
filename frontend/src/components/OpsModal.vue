@@ -22,18 +22,20 @@
         <div class="ops-actions">
           <button
             @click="handleBackup"
-            :disabled="true"
+            :disabled="!token || isRunning"
             class="btn btn-primary"
           >
-            备份数据库（即将支持）
+            <span v-if="operation === 'backup' && isRunning" class="btn-spinner"></span>
+            导出备份（下载）
           </button>
 
           <button
             @click="handleRestore"
-            :disabled="true"
+            :disabled="!token || isRunning"
             class="btn btn-secondary"
           >
-            恢复数据库（即将支持）
+            <span v-if="operation === 'restore' && isRunning" class="btn-spinner"></span>
+            从备份恢复
           </button>
 
           <button
@@ -64,8 +66,8 @@
         <div class="ops-info">
           <h4>操作说明</h4>
           <ul>
-            <li><strong>备份数据库:</strong> 即将支持（会生成一致性快照，可上传到对象存储）</li>
-            <li><strong>恢复数据库:</strong> 即将支持（从快照恢复后重启服务）</li>
+            <li><strong>导出备份:</strong> 生成一致性快照并下载（你可以自行存到任意位置）</li>
+            <li><strong>从备份恢复:</strong> 上传备份文件覆盖当前数据库（恢复后建议刷新页面）</li>
             <li><strong>拉取并重启服务:</strong> 拉取代码更新、安装依赖并重启服务（用于部署）</li>
           </ul>
         </div>
@@ -76,7 +78,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { opsPullRestart } from '../api/client'
+import { opsDownloadBackup, opsRestoreFromBackup, opsPullRestart } from '../api/client'
 import { useToast } from '../composables/useToast'
 
 const emit = defineEmits<{
@@ -87,17 +89,90 @@ const { showToast } = useToast()
 
 const token = ref('')
 const isRunning = ref(false)
-const operation = ref<'restart' | null>(null)
+const operation = ref<'backup' | 'restore' | 'restart' | null>(null)
 const statusType = ref<'idle' | 'running' | 'success' | 'error'>('idle')
 const statusMessage = ref('')
 const output = ref('')
 
-function handleBackup() {
-  showToast('备份功能即将支持（未来可接对象存储）', 'info')
+async function handleBackup() {
+  if (!token.value) {
+    showToast('请输入访问令牌', 'error')
+    return
+  }
+
+  isRunning.value = true
+  operation.value = 'backup'
+  statusType.value = 'running'
+  statusMessage.value = '正在生成备份并下载...'
+  output.value = ''
+
+  try {
+    const { blob, filename } = await opsDownloadBackup(token.value)
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
+
+    statusType.value = 'success'
+    statusMessage.value = '备份已下载'
+    output.value = `下载完成: ${filename}`
+    showToast('备份已下载', 'success')
+  } catch (err: any) {
+    statusType.value = 'error'
+    statusMessage.value = '备份失败'
+    output.value = err.message || String(err)
+    showToast('备份失败', 'error')
+  } finally {
+    isRunning.value = false
+    operation.value = null
+  }
 }
 
-function handleRestore() {
-  showToast('恢复功能即将支持（未来可接对象存储）', 'info')
+async function handleRestore() {
+  if (!token.value) {
+    showToast('请输入访问令牌', 'error')
+    return
+  }
+
+  if (!confirm('将从备份文件恢复数据库。该操作会覆盖当前数据，且可能导致正在使用的页面短暂错误。确定继续吗？')) {
+    return
+  }
+
+  const input = document.createElement('input')
+  input.type = 'file'
+  input.accept = '.db,application/octet-stream'
+  input.onchange = async () => {
+    const file = input.files && input.files[0] ? input.files[0] : null
+    if (!file) return
+
+    isRunning.value = true
+    operation.value = 'restore'
+    statusType.value = 'running'
+    statusMessage.value = '正在上传备份并恢复...'
+    output.value = ''
+
+    try {
+      const res = await opsRestoreFromBackup(token.value, file)
+      statusType.value = 'success'
+      statusMessage.value = '恢复完成（建议刷新页面）'
+      output.value = JSON.stringify(res, null, 2)
+      showToast('恢复完成', 'success')
+    } catch (err: any) {
+      statusType.value = 'error'
+      statusMessage.value = '恢复失败'
+      output.value = err.message || String(err)
+      showToast('恢复失败', 'error')
+    } finally {
+      isRunning.value = false
+      operation.value = null
+    }
+  }
+
+  input.click()
 }
 
 async function handlePullRestart() {

@@ -89,6 +89,18 @@ python server/main.py
 python scripts/sqlite_backup.py --db data/pm.db --out data/pm_backup.db
 ```
 
+### 推荐动作（Web UI / 最简单）
+
+目标：直接在浏览器里点击下载备份文件。
+
+动作：
+1) 打开系统页面，进入“运维”
+2) 填写管理口令（环境变量 `PM_ADMIN_TOKEN`）
+3) 点击“导出备份（下载）”
+4) 浏览器会下载 `pm_backup_YYYYMMDDTHHMMSSZ.db`
+
+你可以把这个文件保存到任何地方（本地硬盘、网盘、对象存储、Git 等）。
+
 ### 推荐动作（Linux 服务器脚本封装）
 
 ```bash
@@ -192,6 +204,19 @@ journalctl -u myprojectmanager-backup.service -f
 3) 启服务
 
 `sudo systemctl start myprojectmanager`
+
+### 动作（Web UI / 最简单）
+
+目标：在浏览器里选择一个备份文件并恢复。
+
+动作：
+1) 打开系统页面，进入“运维”
+2) 填写管理口令（环境变量 `PM_ADMIN_TOKEN`）
+3) 点击“从备份恢复”
+4) 选择你之前下载的 `pm_backup_*.db`
+5) 等待提示“恢复完成”，然后刷新页面
+
+注意：恢复会覆盖当前数据库，后端会把旧数据库另存为 `pm.db.bak.<timestamp>`。
 
 ---
 

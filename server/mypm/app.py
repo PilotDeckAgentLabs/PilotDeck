@@ -62,6 +62,30 @@ def create_app(config: Config = None) -> Flask:
     app.extensions['deploy_service'] = deploy_service
     app.extensions['require_agent'] = require_agent
     app.extensions['require_admin'] = require_admin
+
+    # Maintenance flags (used for DB restore).
+    app.extensions.setdefault('maintenance', {})
+    app.extensions['maintenance'].setdefault('restoring_db', False)
+
+    @app.before_request
+    def _block_during_restore():
+        # Keep admin endpoints available to complete restore request.
+        from flask import request, jsonify
+
+        maint = app.extensions.get('maintenance') or {}
+        if not maint.get('restoring_db'):
+            return None
+
+        path = str(request.path or '')
+        if path.startswith('/api/admin'):
+            return None
+        if path.startswith('/api/health') or path.startswith('/api/meta'):
+            return None
+
+        return jsonify({
+            "success": False,
+            "error": "Service is restoring database. Please retry shortly.",
+        }), 503
     
     # Register blueprints
     from .api import projects, stats, meta, agent, admin_ops
