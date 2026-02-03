@@ -1,7 +1,8 @@
 # MyProjectManager
 
 一个基于 GitHub 仓库的“个人项目统一管理”Demo：
-- 项目数据以 `JSON` 文件形式存储在独立的数据仓库（便于版本管理、审计、回滚，也方便未来开源）
+- 项目数据运行时使用本地嵌入式 `SQLite`（WAL）存储（无需独立 DB 服务，支持并发/事务/索引）
+- 可选：保留 legacy `JSON` 文件作为导入源/人工可读备份
 - 提供 Python CLI 脚本做数据管理（可选）
 - 提供 Flask 后端 API + 原生 Web 前端，实现项目的增删改查与统计展示
 
@@ -14,8 +15,12 @@
 
 ## 目录结构
 
-- `data/`：数据仓库的工作目录（独立 Git 仓库，已在代码仓库中忽略）
-- `data/projects.json`：项目数据（你日常维护的核心）
+- `data/`：本地数据目录（默认被代码仓库忽略）
+- `data/pm.db`：SQLite 主数据库（运行时主存储，推荐）
+- `data/pm_backup.db`：SQLite 快照文件（单文件一致性备份，可上传到对象存储或其它备份介质）
+- `data/projects.json`：legacy 项目数据（可选，用于一次性导入或人工可读备份）
+- `data/agent_runs.json`：legacy Agent Runs（可选，用于一次性导入）
+- `data/agent_events.jsonl`：legacy Agent Events（可选，用于一次性导入）
 - `data/schema.json`：数据结构 JSON Schema（用于约束字段含义/结构）
 - `scripts/project_manager.py`：CLI 数据管理脚本（增删改查/统计）
 - `server/api_server.py`：后端 API + 静态前端托管
@@ -31,15 +36,17 @@
 
 ## 快速开始（本地运行）
 
-### 0) 准备数据仓库（一次性）
+### 0) 准备数据目录（一次性）
 
-本项目将 `data/` 作为“数据仓库”的工作目录（独立 Git 仓库，已在代码仓库中忽略）。
+本项目将 `data/` 作为本地数据目录（代码仓库默认忽略该目录）。
 
-在代码仓库根目录执行（示例）：
+在代码仓库根目录执行：
 
 ```bash
-git clone <your-data-repo-url> data
+mkdir -p data
 ```
+
+首次启动后端时会自动创建 `data/pm.db`（SQLite）。如果你还保留 legacy `data/projects.json`，会在首次初始化时自动尝试导入。
 
 ### 1) 安装依赖
 
@@ -62,6 +69,7 @@ python server/api_server.py
 ```bash
 export PM_PORT=8689   # 端口，默认 8689
 export PM_DEBUG=1     # 调试模式：1 开启，默认关闭
+export PM_DB_FILE=...  # SQLite DB 路径（默认 data/pm.db）
 ```
 
 方式 B（Windows 脚本）：
@@ -76,6 +84,36 @@ start_server.bat
 start_server.ps1
 ```
 
+## 数据存储与备份（SQLite）
+
+### 自动导入（首次切换）
+
+当 `data/pm.db` 为空或不存在时，服务启动会尝试从 legacy 文件导入：
+
+- `data/projects.json`
+- `data/agent_runs.json`
+- `data/agent_events.jsonl`
+
+导入是 best-effort：缺失/损坏文件会被跳过。
+
+### 备份（推荐）
+
+SQLite WAL 模式下，**直接拷贝 `pm.db` 并不总是安全备份**（可能遗漏 WAL 中尚未 checkpoint 的事务）。
+
+推荐使用脚本生成一致性快照：
+
+```bash
+python scripts/sqlite_backup.py --db data/pm.db --out data/pm_backup.db
+```
+
+也可以使用封装脚本：
+
+```bash
+./backup_db_snapshot.sh
+```
+
+更完整的运维手册见：`docs/DB_OPS.md`
+
 ## 部署到云服务器（Linux）
 
 本项目默认监听 `8689`。服务器部署场景使用 `deploy_pull_restart.sh` 一键拉取、安装依赖并重启服务。
@@ -83,9 +121,9 @@ start_server.ps1
 仓库内已提供以下运维脚本：
 
 1) 从 GitHub 拉取更新并部署、重启：`deploy_pull_restart.sh`
-2) 将数据仓库的本地修改推送到 GitHub：`push_data_to_github.sh`
-3) 拉取数据仓库更新：`pull_data_repo.sh`
-4) 设置每天自动备份数据：`setup_auto_backup.sh`（推荐）
+2) 生成数据库一致性快照：`backup_db_snapshot.sh`
+3) 从快照恢复数据库：`restore_db_snapshot.sh`
+4) 设置每天自动生成快照：`setup_auto_backup.sh`（推荐）
 
 脚本说明见脚本文件头部注释。
 
@@ -125,7 +163,7 @@ sudo ./setup_auto_backup.sh
 - 使用 `${ROOT}/.venv` 创建虚拟环境并安装 `requirements.txt`
 - 若存在 systemd：
   - 自动写入/启用 `/etc/systemd/system/myprojectmanager.service` 并重启
-  - **使用 sudo 运行时**：自动设置每天定时备份数据到 GitHub（幂等）
+  - **使用 sudo 运行时**：自动设置每天定时生成数据库快照（幂等）
   - **前端触发或非 root 运行时**：提示手动运行 `setup_auto_backup.sh`
 - 若无 systemd：使用 `nohup` 启动（日志写入 `server.log`，PID 写入 `.server.pid`）
 
@@ -148,7 +186,7 @@ sudo ./setup_auto_backup.sh
 ```
 
 这将：
-- 安装 systemd timer（每天 0 点执行 `push_data_to_github.sh`）
+- 安装 systemd timer（每天 0 点生成 SQLite 快照文件 `data/pm_backup.db`）
 - 自动启用并启动定时器
 - 显示下次备份时间
 

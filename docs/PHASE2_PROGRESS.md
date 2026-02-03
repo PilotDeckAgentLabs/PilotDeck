@@ -302,17 +302,18 @@ sudo ./deploy_pull_restart.sh
 - **Full feature parity** with old UI + enhancements
 
 ### Deployment Scripts
-All existing scripts remain compatible:
+Scripts updated for SQLite snapshot backups:
 - ✅ `deploy_pull_restart.sh` - Now auto-builds frontend
-- ✅ `push_data_to_github.sh` - Unchanged
-- ✅ `pull_data_repo.sh` - Unchanged
-- ✅ `setup_auto_backup.sh` - Unchanged
-- ✅ `merge_data_sync_to_main.sh` - Unchanged
+- ✅ `backup_db_snapshot.sh` - Create consistent SQLite snapshot
+- ✅ `restore_db_snapshot.sh` - Restore from snapshot (manual / requires stop)
+- ⚠️ `push_data_to_github.sh` - Deprecated
+- ⚠️ `pull_data_repo.sh` - Deprecated
+- ⚠️ `merge_data_sync_to_main.sh` - Deprecated
+- ✅ `setup_auto_backup.sh` - Updated (daily snapshot via systemd timer)
 
-### Data Repository
-- Still uses `data/` directory (independent Git repo)
-- Still ignored by code repo (.gitignore)
-- No changes to data structure or API
+### Data Directory
+- Uses `data/` directory for local runtime storage
+- Backups are snapshot-based (single file) and can be uploaded to object storage externally
 
 ---
 
