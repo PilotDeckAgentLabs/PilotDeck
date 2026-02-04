@@ -127,8 +127,9 @@ def create_app(config: Config = None) -> Flask:
 
         # Otherwise serve SPA index.html (deep-link fallback).
         response = send_from_directory(config.FRONTEND_DIST_DIR, 'index.html')
-        # Let the browser cache but revalidate so users see updates.
-        response.headers['Cache-Control'] = 'no-cache, must-revalidate'
+        # Cache but always revalidate with server (ETag).
+        # Browser will send If-None-Match, server responds 304 if unchanged.
+        response.headers['Cache-Control'] = 'no-cache'
         return response
     
     # Error handlers
