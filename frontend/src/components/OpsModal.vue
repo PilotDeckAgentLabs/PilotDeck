@@ -1,9 +1,9 @@
 <template>
-  <div class="modal-overlay" @click.self="$emit('close')">
+  <div class="modal-overlay" @click.self="closeModal">
     <div class="modal-content ops-modal">
       <div class="modal-header">
         <h2>运维操作</h2>
-        <button @click="$emit('close')" class="btn-close">×</button>
+        <button @click="closeModal" class="btn-close">×</button>
       </div>
 
       <div class="modal-body">
@@ -77,7 +77,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onUnmounted, ref } from 'vue'
 import { opsDownloadBackup, opsRestoreFromBackup, opsPullRestart, opsGetDeployLog, opsGetDeployStatus } from '../api/client'
 import { useToast } from '../composables/useToast'
 
@@ -95,6 +95,11 @@ const statusMessage = ref('')
 const output = ref('')
 
 let deployPollTimer: number | null = null
+
+function closeModal() {
+  stopDeployPolling()
+  emit('close')
+}
 
 function stopDeployPolling() {
   if (deployPollTimer) {
@@ -143,6 +148,10 @@ function startDeployPolling() {
     }
   }, 1500)
 }
+
+onUnmounted(() => {
+  stopDeployPolling()
+})
 
 async function handleBackup() {
   if (!token.value) {
@@ -251,11 +260,6 @@ async function handlePullRestart() {
     statusType.value = 'running'
     statusMessage.value = '正在拉取更新并部署...'
     startDeployPolling()
-
-    // Give server time to restart then close modal
-    setTimeout(() => {
-      emit('close')
-    }, 2000)
   } catch (err: any) {
     statusType.value = 'error'
     statusMessage.value = '服务重启失败'
