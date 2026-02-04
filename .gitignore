@@ -28,3 +28,7 @@ frontend/dist/
 
 # Local runtime data (SQLite, snapshots, legacy imports)
 data/
+
+# Deploy runtime files
+deploy_state.json
+deploy_run.log

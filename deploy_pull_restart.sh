@@ -90,7 +90,21 @@ python -m pip install -r requirements.txt
 
 # Build frontend (required). Try to make npm visible in non-interactive environments
 # (e.g., systemd-run) where nvm-managed Node may not be on PATH.
-if ! command -v npm >/dev/null 2>&1; then
+NPM_BIN=""
+NODE_BIN=""
+
+# First, try finding npm/node in common system locations
+for bin_path in /usr/bin /usr/local/bin /opt/homebrew/bin; do
+  if [[ -x "${bin_path}/npm" ]] && [[ -x "${bin_path}/node" ]]; then
+    NPM_BIN="${bin_path}/npm"
+    NODE_BIN="${bin_path}/node"
+    echo "[INFO] Found system Node.js at: ${bin_path}"
+    break
+  fi
+done
+
+# If not found, try loading nvm
+if [[ -z "$NPM_BIN" ]] && ! command -v npm >/dev/null 2>&1; then
   echo "[INFO] npm not found on PATH. Attempting to load nvm..."
   
   # Try multiple common nvm locations
@@ -124,24 +138,28 @@ if ! command -v npm >/dev/null 2>&1; then
   fi
 fi
 
-if command -v node >/dev/null 2>&1; then
-  echo "[INFO] Node: $(node -v 2>&1 || true)"
+# Determine which npm/node to use
+if [[ -n "$NPM_BIN" ]]; then
+  # Use absolute paths we found earlier
+  :
+elif command -v npm >/dev/null 2>&1; then
+  # npm is now on PATH (from nvm or system)
+  NPM_BIN="$(command -v npm)"
+  NODE_BIN="$(command -v node)"
+fi
+
+if [[ -n "$NODE_BIN" ]]; then
+  echo "[INFO] Node: $($NODE_BIN -v 2>&1 || true) at $NODE_BIN"
 else
   echo "[INFO] Node: (not found)"
 fi
 
-if ! command -v npm >/dev/null 2>&1; then
+if [[ -z "$NPM_BIN" ]]; then
   echo "[ERROR] npm not found. Frontend build is required for the UI."
   echo "[HINT] Install Node.js/npm using one of these methods:"
   echo ""
-  echo "  Method 1 (nvm - recommended for user installs):"
-  echo "    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash"
-  echo "    source ~/.bashrc"
-  echo "    nvm install --lts"
-  echo "    nvm use --lts"
-  echo ""
-  echo "  Method 2 (system package - simpler):"
-  echo "    # CentOS/RHEL:"
+  echo "  Method 1 (system package - recommended):"
+  echo "    # CentOS/RHEL/Alibaba Cloud Linux:"
   echo "    curl -fsSL https://rpm.nodesource.com/setup_lts.x | sudo bash -"
   echo "    sudo yum install -y nodejs"
   echo ""
@@ -149,10 +167,16 @@ if ! command -v npm >/dev/null 2>&1; then
   echo "    curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo bash -"
   echo "    sudo apt-get install -y nodejs"
   echo ""
+  echo "  Method 2 (nvm):"
+  echo "    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash"
+  echo "    source ~/.bashrc"
+  echo "    nvm install --lts"
+  echo "    nvm use --lts"
+  echo ""
   exit 3
 fi
 
-echo "[INFO] npm: $(npm -v 2>&1 || true)"
+echo "[INFO] npm: $($NPM_BIN -v 2>&1 || true) at $NPM_BIN"
 echo "[INFO] Building frontend..."
 cd "$ROOT_DIR/frontend"
 
@@ -164,14 +188,14 @@ fi
 
 # Always install/update dependencies to ensure consistency
 echo "[INFO] Installing frontend dependencies..."
-if ! npm install; then
+if ! "$NPM_BIN" install; then
   echo "[ERROR] npm install failed"
   echo "[ERROR] Aborting deployment. Service will NOT be restarted."
   exit 4
 fi
 
 echo "[INFO] Running production build..."
-if ! npm run build; then
+if ! "$NPM_BIN" run build; then
   echo "[ERROR] npm run build failed"
   echo "[ERROR] Aborting deployment. Service will NOT be restarted."
   exit 4
