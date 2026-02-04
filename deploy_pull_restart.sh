@@ -88,7 +88,7 @@ echo "[INFO] Installing dependencies..."
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 
-# Build frontend if npm is available. Try to make npm visible in non-interactive environments
+# Build frontend (required). Try to make npm visible in non-interactive environments
 # (e.g., systemd-run) where nvm-managed Node may not be on PATH.
 if ! command -v npm >/dev/null 2>&1; then
   echo "[INFO] npm not found on PATH. Attempting to load nvm..."
@@ -109,31 +109,25 @@ else
   echo "[INFO] Node: (not found)"
 fi
 
-if command -v npm >/dev/null 2>&1; then
-  echo "[INFO] npm: $(npm -v 2>&1 || true)"
-  echo "[INFO] Building frontend..."
-  cd "$ROOT_DIR/frontend"
-  
-  # Always install/update dependencies to ensure consistency
-  echo "[INFO] Installing frontend dependencies..."
-  npm install
-  
-  # Build production bundle
-  echo "[INFO] Running production build..."
-  # Use npx from local node_modules if possible, or global
-  if [[ -f "node_modules/.bin/vite" ]]; then
-    ./node_modules/.bin/vite build
-  else
-    npx vite build
-  fi
-  
-  echo "[INFO] Frontend build complete. Output: frontend/dist/"
-  cd "$ROOT_DIR"
-else
-  echo "[WARN] npm not found. Skipping frontend build."
-  echo "[HINT] Frontend build is optional. Install Node.js/npm if you need the Vue 3 UI."
-  echo "[HINT] UI requires the frontend build. Install Node.js/npm (or nvm) to enable the UI."
+if ! command -v npm >/dev/null 2>&1; then
+  echo "[ERROR] npm not found. Frontend build is required for the UI."
+  echo "[HINT] Install Node.js/npm or configure nvm so npm is available to this script."
+  exit 3
 fi
+
+echo "[INFO] npm: $(npm -v 2>&1 || true)"
+echo "[INFO] Building frontend..."
+cd "$ROOT_DIR/frontend"
+
+# Always install/update dependencies to ensure consistency
+echo "[INFO] Installing frontend dependencies..."
+npm install
+
+echo "[INFO] Running production build..."
+npm run build
+
+echo "[INFO] Frontend build complete. Output: frontend/dist/"
+cd "$ROOT_DIR"
 
 SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
 
