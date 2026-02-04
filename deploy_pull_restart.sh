@@ -92,14 +92,35 @@ python -m pip install -r requirements.txt
 # (e.g., systemd-run) where nvm-managed Node may not be on PATH.
 if ! command -v npm >/dev/null 2>&1; then
   echo "[INFO] npm not found on PATH. Attempting to load nvm..."
-  export NVM_DIR="${NVM_DIR:-${HOME:-/root}/.nvm}"
-  if [[ -s "${NVM_DIR}/nvm.sh" ]]; then
-    # shellcheck disable=SC1090
-    . "${NVM_DIR}/nvm.sh"
-    # Prefer default, otherwise fall back to any installed node.
-    nvm use --silent default >/dev/null 2>&1 || nvm use --silent node >/dev/null 2>&1 || true
-  else
-    echo "[INFO] nvm not found at: ${NVM_DIR}/nvm.sh"
+  
+  # Try multiple common nvm locations
+  NVM_SEARCH_PATHS=(
+    "${NVM_DIR:-}"
+    "$HOME/.nvm"
+    "/root/.nvm"
+    "$(eval echo ~$(logname 2>/dev/null || echo root))/.nvm"
+  )
+  
+  NVM_LOADED=0
+  for nvm_path in "${NVM_SEARCH_PATHS[@]}"; do
+    if [[ -z "$nvm_path" ]]; then
+      continue
+    fi
+    nvm_script="${nvm_path}/nvm.sh"
+    if [[ -s "$nvm_script" ]]; then
+      echo "[INFO] Found nvm at: $nvm_script"
+      export NVM_DIR="$nvm_path"
+      # shellcheck disable=SC1090
+      . "$nvm_script"
+      # Prefer default, otherwise fall back to any installed node.
+      nvm use --silent default >/dev/null 2>&1 || nvm use --silent node >/dev/null 2>&1 || true
+      NVM_LOADED=1
+      break
+    fi
+  done
+  
+  if [[ $NVM_LOADED -eq 0 ]]; then
+    echo "[INFO] nvm not found in common locations: ${NVM_SEARCH_PATHS[*]}"
   fi
 fi
 
@@ -111,7 +132,23 @@ fi
 
 if ! command -v npm >/dev/null 2>&1; then
   echo "[ERROR] npm not found. Frontend build is required for the UI."
-  echo "[HINT] Install Node.js/npm or configure nvm so npm is available to this script."
+  echo "[HINT] Install Node.js/npm using one of these methods:"
+  echo ""
+  echo "  Method 1 (nvm - recommended for user installs):"
+  echo "    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash"
+  echo "    source ~/.bashrc"
+  echo "    nvm install --lts"
+  echo "    nvm use --lts"
+  echo ""
+  echo "  Method 2 (system package - simpler):"
+  echo "    # CentOS/RHEL:"
+  echo "    curl -fsSL https://rpm.nodesource.com/setup_lts.x | sudo bash -"
+  echo "    sudo yum install -y nodejs"
+  echo ""
+  echo "    # Ubuntu/Debian:"
+  echo "    curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo bash -"
+  echo "    sudo apt-get install -y nodejs"
+  echo ""
   exit 3
 fi
 
