@@ -28,6 +28,8 @@ class Config:
     ADMIN_TOKEN = os.environ.get('PM_ADMIN_TOKEN', '').strip()
     AGENT_TOKEN = os.environ.get('PM_AGENT_TOKEN', '').strip()
     
-    # Static files (old UI)
-    STATIC_FOLDER = os.path.join(ROOT_DIR, 'web')
-    STATIC_URL_PATH = ''
+    # Static files
+    # We serve the built Vue app from frontend/dist at the root path '/'.
+    STATIC_FOLDER = FRONTEND_DIST_DIR
+    # Avoid clashing with our SPA catch-all routes at '/'.
+    STATIC_URL_PATH = '/__static'

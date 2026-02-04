@@ -113,9 +113,32 @@ export interface ApiErrorResponse {
 
 export interface OpsLogResponse {
   success: boolean
-  log: string
-  running?: boolean
+  lines: string[]
+}
+
+export interface DeployStartResponse {
+  success: boolean
+  jobId: string
+  method?: string
+  unit?: string | null
   pid?: number | null
+  logFile?: string
+}
+
+export interface DeployStatusData {
+  state: 'running' | 'success' | 'failed' | 'unknown'
+  method?: string
+  unit?: string | null
+  pid?: number | null
+  exitCode?: number | null
+  message?: string
+  startedAt?: string
+  updatedAt?: string
+}
+
+export interface DeployStatusResponse {
+  success: boolean
+  data: DeployStatusData
 }
 
 export interface MetaInfo {

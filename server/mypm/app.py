@@ -98,39 +98,37 @@ def create_app(config: Config = None) -> Flask:
     
     # Register static routes
     @app.route('/')
-    def index():
-        """Serve old frontend."""
-        return send_from_directory(app.static_folder, 'index.html')
-    
-    @app.route('/app')
-    @app.route('/app/')
-    @app.route('/app/<path:filename>')
-    def index_app(filename: str = 'index.html'):
-        """Serve new Vite/Vue frontend if built.
-        
-        This keeps the current ops workflow:
-        - Old UI remains at '/'
-        - New UI (when built) is served at '/app'
+    @app.route('/<path:filename>')
+    def index_app_root(filename: str = 'index.html'):
+        """Serve built Vue SPA at '/'.
+
+        - API is served under /api/*.
+        - Any non-file route should fall back to SPA index.html.
         """
+        # Never handle API routes here.
+        if str(filename or '').startswith('api/') or str(filename or '') == 'api':
+            from flask import abort
+            abort(404)
+
         if not os.path.isdir(config.FRONTEND_DIST_DIR):
             return (
-                "<h2>New frontend not built</h2>"
-                "<p>Run <code>npm install</code> and <code>npm run build</code> in <code>frontend/</code>.</p>"
-                "<p>Current UI is available at <a href='/'>/</a>.</p>",
+                "<h2>Frontend not built</h2>"
+                "<p>Run <code>npm install</code> and <code>npm run build</code> in <code>frontend/</code>.</p>",
                 200,
                 {'Content-Type': 'text/html; charset=utf-8'}
             )
 
         path = str(filename or '').strip() or 'index.html'
-        # Serve static assets if they exist, otherwise fall back to SPA index.
+
+        # If a static file exists in dist, serve it.
         full = os.path.join(config.FRONTEND_DIST_DIR, path)
         if path != 'index.html' and os.path.exists(full):
-            # Static assets (hashed) can be cached forever-ish, but let Flask default handle it.
             return send_from_directory(config.FRONTEND_DIST_DIR, path)
-        
-        # SPA index.html should NOT be cached to ensure updates are seen immediately.
+
+        # Otherwise serve SPA index.html (deep-link fallback).
         response = send_from_directory(config.FRONTEND_DIST_DIR, 'index.html')
-        response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+        # Let the browser cache but revalidate so users see updates.
+        response.headers['Cache-Control'] = 'no-cache, must-revalidate'
         return response
     
     # Error handlers

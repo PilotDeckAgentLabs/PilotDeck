@@ -14,6 +14,15 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SERVICE_NAME="pilotdeck"
 PORT="8689"
 
+echo "[INFO] ===== Deploy diagnostics ====="
+echo "[INFO] whoami: $(whoami 2>/dev/null || true)"
+echo "[INFO] id: $(id 2>/dev/null || true)"
+echo "[INFO] pwd: $(pwd 2>/dev/null || true)"
+echo "[INFO] ROOT_DIR: ${ROOT_DIR}"
+echo "[INFO] PATH: ${PATH}"
+echo "[INFO] SHELL: ${SHELL:-}"
+echo "[INFO] HOME: ${HOME:-}"
+
 # Prefer /usr/local/bin/python3 (user-managed symlink to python3.8+).
 # Do NOT repoint /usr/bin/python to avoid breaking system tooling.
 PYTHON_BIN=""
@@ -29,6 +38,8 @@ if [[ -z "${PYTHON_BIN}" ]]; then
   echo "       ln -sf /usr/local/bin/python3.8 /usr/local/bin/python3"
   exit 1
 fi
+
+echo "[INFO] Python: $(${PYTHON_BIN} -V 2>&1 || true)"
 
 if ! "${PYTHON_BIN}" -c 'import sys; raise SystemExit(0 if sys.version_info[:2] >= (3, 8) else 1)'; then
   echo "[ERROR] Python 3.8+ required. Found: $(${PYTHON_BIN} -V 2>&1)"
@@ -77,8 +88,29 @@ echo "[INFO] Installing dependencies..."
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 
-# Build frontend if npm is available
+# Build frontend if npm is available. Try to make npm visible in non-interactive environments
+# (e.g., systemd-run) where nvm-managed Node may not be on PATH.
+if ! command -v npm >/dev/null 2>&1; then
+  echo "[INFO] npm not found on PATH. Attempting to load nvm..."
+  export NVM_DIR="${NVM_DIR:-${HOME:-/root}/.nvm}"
+  if [[ -s "${NVM_DIR}/nvm.sh" ]]; then
+    # shellcheck disable=SC1090
+    . "${NVM_DIR}/nvm.sh"
+    # Prefer default, otherwise fall back to any installed node.
+    nvm use --silent default >/dev/null 2>&1 || nvm use --silent node >/dev/null 2>&1 || true
+  else
+    echo "[INFO] nvm not found at: ${NVM_DIR}/nvm.sh"
+  fi
+fi
+
+if command -v node >/dev/null 2>&1; then
+  echo "[INFO] Node: $(node -v 2>&1 || true)"
+else
+  echo "[INFO] Node: (not found)"
+fi
+
 if command -v npm >/dev/null 2>&1; then
+  echo "[INFO] npm: $(npm -v 2>&1 || true)"
   echo "[INFO] Building frontend..."
   cd "$ROOT_DIR/frontend"
   
@@ -100,7 +132,7 @@ if command -v npm >/dev/null 2>&1; then
 else
   echo "[WARN] npm not found. Skipping frontend build."
   echo "[HINT] Frontend build is optional. Install Node.js/npm if you need the Vue 3 UI."
-  echo "[HINT] Old UI at / will continue to work without the build."
+  echo "[HINT] UI requires the frontend build. Install Node.js/npm (or nvm) to enable the UI."
 fi
 
 SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"

@@ -9,8 +9,7 @@ PilotDeck is a self-hosted project hub for developer workflows with optional age
 - Runtime storage: SQLite (`data/pm.db`) in WAL mode
 - Backend: Flask API (app factory + blueprints)
 - UI:
-  - Old UI served from `web/` at `/` (no build step)
-  - New UI built from `frontend/` and served at `/app` (optional)
+  - Vue UI built from `frontend/` and served at `/` (requires build)
 - Agent integration: runs/events/actions endpoints for agent-driven progress updates and audit trail
 - Ops: backup export/restore via admin endpoints; optional deploy trigger and systemd scripts
 
@@ -19,7 +18,6 @@ PilotDeck is a self-hosted project hub for developer workflows with optional age
 - `server/`
   - `server/main.py`: main entrypoint (reads env, starts Flask)
   - `server/mypm/`: backend package
-- `web/`: old UI (static HTML/CSS/JS)
 - `frontend/`: Vue 3 UI (build outputs to `frontend/dist/`)
 - `scripts/`: helper CLIs (e.g. SQLite snapshot)
 - `docs/`: owner and client documentation
@@ -31,7 +29,7 @@ PilotDeck is a self-hosted project hub for developer workflows with optional age
 
 - `server/mypm/app.py`
   - Creates Flask app, loads `Config`, initializes stores/services, registers blueprints
-  - Serves `/` from `web/` and `/app` from `frontend/dist` when built
+  - Serves `/` from `frontend/dist` when built (SPA fallback)
   - Maintains a small in-memory maintenance flag (`restoring_db`) to block API calls during restore
 
 ### Configuration
@@ -107,20 +105,13 @@ PilotDeck is a self-hosted project hub for developer workflows with optional age
 
 ## Frontend
 
-### Old UI (no build)
-
-- `web/index.html`, `web/js/app.js`, `web/css/style.css`
-  - Uses fetch against `/api/*`
-  - Provides an ops modal for admin actions (backup/restore/deploy)
-  - Uses `PM_ADMIN_TOKEN` entered in UI to call `/api/admin/*`
-
 ### New UI (Vue 3)
 
 - `frontend/src/`
   - `frontend/src/api/client.ts`: typed API client (projects/stats/agent/admin)
   - `frontend/src/stores/*`: state management (Pinia)
   - `frontend/src/components/*`: CRUD modals and ops modal
-- Build outputs to `frontend/dist/` and is served at `/app` when present
+- Build outputs to `frontend/dist/` and is served at `/` when present
 
 ## Ops & Deployment
 

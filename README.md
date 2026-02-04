@@ -29,8 +29,7 @@
 - 后端：`server/mypm`（Flask API）
 - 数据库：SQLite（默认 `data/pm.db`）
 - 前端：
-  - 旧 UI（无需构建）：`/`
-  - 新 UI（Vue 3，构建后可用）：`/app`
+  - Vue 3 UI（构建后可用）：`/`
 
 文档：
 - Agent 客户端对接：`docs/AGENT_API.md` / `docs/AGENT_API.zh-CN.md`
@@ -70,9 +69,9 @@ python server/main.py
 - UI：`http://localhost:8689/`
 - API：`http://localhost:8689/api`
 
-### 2.1) 构建新 UI（可选）
+### 2.1) 构建 UI（如需 Web 界面则必须）
 
-构建后可访问：`http://localhost:8689/app`
+构建后可访问：`http://localhost:8689/`
 
 ```bash
 cd frontend

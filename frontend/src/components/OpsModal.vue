@@ -78,7 +78,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { opsDownloadBackup, opsRestoreFromBackup, opsPullRestart } from '../api/client'
+import { opsDownloadBackup, opsRestoreFromBackup, opsPullRestart, opsGetDeployLog, opsGetDeployStatus } from '../api/client'
 import { useToast } from '../composables/useToast'
 
 const emit = defineEmits<{
@@ -93,6 +93,56 @@ const operation = ref<'backup' | 'restore' | 'restart' | null>(null)
 const statusType = ref<'idle' | 'running' | 'success' | 'error'>('idle')
 const statusMessage = ref('')
 const output = ref('')
+
+let deployPollTimer: number | null = null
+
+function stopDeployPolling() {
+  if (deployPollTimer) {
+    window.clearInterval(deployPollTimer)
+    deployPollTimer = null
+  }
+}
+
+function startDeployPolling() {
+  stopDeployPolling()
+
+  deployPollTimer = window.setInterval(async () => {
+    if (!token.value) return
+    try {
+      const [st, log] = await Promise.all([
+        opsGetDeployStatus(token.value),
+        opsGetDeployLog(token.value),
+      ])
+
+      if (log && Array.isArray(log.lines)) {
+        output.value = log.lines.join('\n')
+      }
+
+      const state = st && st.data ? st.data.state : 'unknown'
+      if (state === 'running') {
+        statusType.value = 'running'
+        statusMessage.value = '正在拉取更新并部署...'
+        return
+      }
+
+      if (state === 'success') {
+        statusType.value = 'success'
+        statusMessage.value = '部署完成'
+        stopDeployPolling()
+        return
+      }
+
+      if (state === 'failed') {
+        statusType.value = 'error'
+        statusMessage.value = '部署失败'
+        stopDeployPolling()
+        return
+      }
+    } catch {
+      // transient errors during restart; ignore
+    }
+  }, 1500)
+}
 
 async function handleBackup() {
   if (!token.value) {
@@ -194,9 +244,13 @@ async function handlePullRestart() {
   try {
     const result = await opsPullRestart(token.value)
     statusType.value = 'success'
-    statusMessage.value = '服务重启成功'
-    output.value = result.output || '操作完成'
-    showToast('服务已重启', 'success')
+    statusMessage.value = '已触发部署（服务会短暂重启）'
+    output.value = JSON.stringify(result, null, 2)
+    showToast('已触发部署', 'success')
+
+    statusType.value = 'running'
+    statusMessage.value = '正在拉取更新并部署...'
+    startDeployPolling()
 
     // Give server time to restart then close modal
     setTimeout(() => {

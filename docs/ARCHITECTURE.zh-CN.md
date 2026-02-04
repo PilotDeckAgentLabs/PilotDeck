@@ -9,8 +9,7 @@ PilotDeck 是可自托管的轻量项目管理与 Agent 协作控制台。
 - 运行时存储：SQLite（`data/pm.db`），WAL 模式
 - 后端：Flask API（app factory + blueprints）
 - UI：
-  - 旧 UI：`web/`，路径 `/`（无需构建）
-  - 新 UI：`frontend/` 构建后产物 `frontend/dist/`，路径 `/app`（可选）
+  - Vue UI：`frontend/` 构建后产物 `frontend/dist/`，路径 `/`（需要构建）
 - Agent 集成：runs/events/actions，用于 Agent 写回进度并形成可审计轨迹
 - 运维：管理员备份导出/恢复；可选部署触发；可选 systemd 定时快照
 
@@ -19,8 +18,7 @@ PilotDeck 是可自托管的轻量项目管理与 Agent 协作控制台。
 - `server/`
   - `server/main.py`：服务入口（读取环境变量并启动 Flask）
   - `server/mypm/`：后端包
-- `web/`：旧 UI（静态 HTML/CSS/JS）
-- `frontend/`：新 UI（Vue 3 + TS，构建输出到 `frontend/dist/`）
+ - `frontend/`：新 UI（Vue 3 + TS，构建输出到 `frontend/dist/`）
 - `scripts/`：辅助脚本（例如 SQLite 快照备份）
 - `docs/`：工程/运维/接口文档
 - `data/`：运行时数据目录（git 忽略）
@@ -31,7 +29,7 @@ PilotDeck 是可自托管的轻量项目管理与 Agent 协作控制台。
 
 - `server/mypm/app.py`
   - 创建 Flask app、加载 `Config`、初始化 store/service、注册蓝图
-  - 静态资源托管：`/` -> `web/`；`/app` -> `frontend/dist/`（若存在）
+  - 静态资源托管：`/` -> `frontend/dist/`（SPA fallback）
   - 恢复数据库期间的保护：使用内存标记 `restoring_db`，对非 `/api/admin/*` 请求返回 503（降低“恢复中写入”的风险）
 
 ### 配置
@@ -105,20 +103,13 @@ PilotDeck 是可自托管的轻量项目管理与 Agent 协作控制台。
 
 ## 前端
 
-### 旧 UI（无需构建）
-
-- `web/index.html` + `web/js/app.js` + `web/css/style.css`
-  - 直接调用 `/api/*`
-  - 运维弹窗：备份导出/恢复/部署触发
-  - 管理口令由用户在 UI 中填写（`PM_ADMIN_TOKEN`）并作为请求头发送
-
 ### 新 UI（Vue 3）
 
 - `frontend/src/`
   - `frontend/src/api/client.ts`：Typed API client
   - `frontend/src/stores/*`：Pinia 状态
   - `frontend/src/components/*`：CRUD/运维组件
-- 构建输出：`frontend/dist/`，后端在 `/app` 下托管
+- 构建输出：`frontend/dist/`，后端在 `/` 下托管
 
 ## 运维与部署
 

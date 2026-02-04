@@ -11,6 +11,8 @@ import type {
   ProjectFilters,
   ProjectFormData,
   OpsLogResponse,
+  DeployStartResponse,
+  DeployStatusResponse,
 } from './types'
 
 const API_BASE_URL = '/api'
@@ -286,8 +288,9 @@ export async function getHealth(): Promise<HealthCheck> {
 
 // ===== Ops/Admin API =====
 
-export async function opsPullRestart(token: string): Promise<{ output: string }> {
-  return opsFetch('/admin/pull-restart', token, { method: 'POST' })
+export async function opsPullRestart(token: string): Promise<DeployStartResponse> {
+  // Backend route: POST /api/admin/deploy
+  return opsFetch<DeployStartResponse>('/admin/deploy', token, { method: 'POST' })
 }
 
 export async function opsDownloadBackup(token: string): Promise<{ blob: Blob; filename: string }> {
@@ -302,5 +305,11 @@ export async function opsRestoreFromBackup(token: string, file: File): Promise<a
 }
 
 export async function opsGetDeployLog(token: string): Promise<OpsLogResponse> {
-  return opsFetch<OpsLogResponse>('/admin/deploy-log', token)
+  // Backend route: GET /api/admin/deploy/log
+  return opsFetch<OpsLogResponse>('/admin/deploy/log', token)
+}
+
+export async function opsGetDeployStatus(token: string): Promise<DeployStatusResponse> {
+  // Backend route: GET /api/admin/deploy/status
+  return opsFetch<DeployStatusResponse>('/admin/deploy/status', token)
 }
