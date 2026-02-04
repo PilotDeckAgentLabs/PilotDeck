@@ -187,11 +187,15 @@ if [[ -d "dist" ]]; then
 fi
 
 # Always install/update dependencies to ensure consistency
-echo "[INFO] Installing frontend dependencies..."
-if ! "$NPM_BIN" install; then
-  echo "[ERROR] npm install failed"
-  echo "[ERROR] Aborting deployment. Service will NOT be restarted."
-  exit 4
+# Use 'npm ci' for clean install (doesn't modify package-lock.json)
+echo "[INFO] Installing frontend dependencies (clean install)..."
+if ! "$NPM_BIN" ci; then
+  echo "[WARN] npm ci failed, falling back to npm install..."
+  if ! "$NPM_BIN" install; then
+    echo "[ERROR] npm install also failed"
+    echo "[ERROR] Aborting deployment. Service will NOT be restarted."
+    exit 4
+  fi
 fi
 
 echo "[INFO] Running production build..."
