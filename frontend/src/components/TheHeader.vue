@@ -1,7 +1,11 @@
 <template>
   <header class="app-header">
     <div class="container">
-      <h1 class="logo">我的项目管理系统</h1>
+      <div class="logo-wrapper">
+        <div class="logo-icon">PD</div>
+        <h1 class="logo">PilotDeck</h1>
+      </div>
+      
       <div class="header-actions">
         <button 
           class="btn-icon theme-toggle" 
@@ -24,15 +28,21 @@
           </svg>
         </button>
         
-        <button class="btn btn-secondary" @click="$emit('show-stats')">
+        <div class="divider"></div>
+        
+        <button class="btn btn-ghost" @click="$emit('show-stats')">
           统计信息
         </button>
         
-        <button class="btn btn-secondary" @click="$emit('show-ops')">
+        <button class="btn btn-ghost" @click="$emit('show-ops')">
           运维
         </button>
         
         <button class="btn btn-primary" @click="$emit('add-project')">
+          <svg class="btn-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
           添加项目
         </button>
       </div>
@@ -54,25 +64,52 @@ defineEmits<{
 
 <style scoped>
 .app-header {
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.9), rgba(37, 99, 235, 0.85));
-  color: white;
-  padding: 18px 0;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  background: var(--header-bg);
+  backdrop-filter: var(--backdrop-blur);
+  -webkit-backdrop-filter: var(--backdrop-blur);
+  border-bottom: 1px solid var(--header-border);
+  padding: 16px 0;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  transition: background 0.3s, border-color 0.3s;
 }
 
 .container {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 0 20px;
+  padding: 0 24px;
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
+.logo-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.logo-icon {
+  width: 32px;
+  height: 32px;
+  background: linear-gradient(135deg, var(--primary-color), var(--primary-600));
+  border-radius: 8px;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 14px;
+  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
+}
+
 .logo {
   margin: 0;
-  font-size: 22px;
-  font-weight: 600;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.5px;
 }
 
 .header-actions {
@@ -81,21 +118,30 @@ defineEmits<{
   align-items: center;
 }
 
+.divider {
+  width: 1px;
+  height: 24px;
+  background: var(--border-color);
+  margin: 0 4px;
+}
+
 .btn-icon {
-  background: rgba(255, 255, 255, 0.15);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  color: white;
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
   padding: 8px;
   border-radius: 8px;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: all 0.2s;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .btn-icon:hover {
-  background: rgba(255, 255, 255, 0.25);
+  background: var(--bg-color);
+  color: var(--text-primary);
+  border-color: var(--primary-color);
 }
 
 .icon {
@@ -111,24 +157,35 @@ defineEmits<{
   font-size: 14px;
   font-weight: 500;
   transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
-.btn-secondary {
-  background: rgba(255, 255, 255, 0.2);
-  color: white;
-  border: 1px solid rgba(255, 255, 255, 0.3);
+.btn-ghost {
+  background: transparent;
+  color: var(--text-secondary);
 }
 
-.btn-secondary:hover {
-  background: rgba(255, 255, 255, 0.3);
+.btn-ghost:hover {
+  background: var(--bg-color);
+  color: var(--text-primary);
 }
 
 .btn-primary {
-  background: white;
-  color: var(--primary-color);
+  background: var(--primary-color);
+  color: white;
+  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
 }
 
 .btn-primary:hover {
-  background: rgba(255, 255, 255, 0.9);
+  background: var(--primary-hover);
+  box-shadow: 0 4px 8px rgba(59, 130, 246, 0.3);
+  transform: translateY(-1px);
+}
+
+.btn-icon-svg {
+  width: 16px;
+  height: 16px;
 }
 </style>

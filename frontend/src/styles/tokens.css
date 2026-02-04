@@ -1,37 +1,95 @@
 :root {
-  --primary-color: #3b82f6;
-  --primary-hover: #2563eb;
-  --primary-light: #dbeafe;
+  /* Brand Colors - Modern Tech Blue */
+  --primary-500: #3b82f6;
+  --primary-600: #2563eb;
+  --primary-glow: rgba(59, 130, 246, 0.5);
 
-  --secondary-color: #64748b;
-  --success-color: #10b981;
-  --warning-color: #f59e0b;
-  --danger-color: #ef4444;
-  --info-color: #06b6d4;
+  /* Functional Colors */
+  --primary-color: var(--primary-500);
+  --primary-hover: var(--primary-600);
+  
+  /* Semantic Statuses (Light Mode Default) */
+  --status-planning-bg: #e0f2fe; --status-planning-text: #0369a1;
+  --status-in-progress-bg: #fff7ed; --status-in-progress-text: #c2410c;
+  --status-paused-bg: #f1f5f9; --status-paused-text: #475569;
+  --status-completed-bg: #dcfce7; --status-completed-text: #15803d;
+  --status-cancelled-bg: #fee2e2; --status-cancelled-text: #b91c1c;
 
-  --bg-color: #f1f5f9;
-  --bg-gradient: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+  /* Semantic Priorities */
+  --priority-low-bg: #f3f4f6; --priority-low-text: #4b5563;
+  --priority-medium-bg: #e0f2fe; --priority-medium-text: #0369a1;
+  --priority-high-bg: #ffedd5; --priority-high-text: #c2410c;
+  --priority-urgent-bg: #fee2e2; --priority-urgent-text: #b91c1c;
+
+  /* Neutrals & Surfaces */
+  --bg-color: #f8fafc;
+  --bg-gradient: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+  
   --card-bg: #ffffff;
+  --card-border: rgba(226, 232, 240, 0.8);
+  
+  --header-bg: rgba(255, 255, 255, 0.8);
+  --header-border: rgba(226, 232, 240, 0.6);
 
+  /* Text */
   --text-primary: #0f172a;
-  --text-secondary: #64748b;
+  --text-secondary: #475569;
   --text-muted: #94a3b8;
 
+  /* UI Elements */
   --border-color: #e2e8f0;
-  --border-radius: 12px;
-  --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --border-radius: 16px;
+  --border-radius-sm: 8px;
+  
+  /* Effects */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --shadow-glow: 0 0 15px rgba(59, 130, 246, 0.1);
+  
+  --backdrop-blur: blur(12px);
+  
+  /* Finance */
+  --success-color: #10b981;
+  --danger-color: #ef4444;
 }
 
-/* Dark theme */
+/* Dark Theme - The "Tech" Look */
 [data-theme='dark'] {
+  --primary-color: #60a5fa;
+  --primary-hover: #3b82f6;
+
+  /* Deep Space Backgrounds */
   --bg-color: #0f172a;
-  --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-  --card-bg: #1e293b;
+  --bg-gradient: linear-gradient(180deg, #0f172a 0%, #020617 100%);
+  
+  --card-bg: rgba(30, 41, 59, 0.6);
+  --card-border: rgba(255, 255, 255, 0.08);
+  
+  --header-bg: rgba(15, 23, 42, 0.7);
+  --header-border: rgba(255, 255, 255, 0.05);
 
-  --text-primary: #f1f5f9;
-  --text-secondary: #94a3b8;
+  /* Text */
+  --text-primary: #f8fafc;
+  --text-secondary: #cbd5e1;
   --text-muted: #64748b;
+  --border-color: rgba(255, 255, 255, 0.1);
 
-  --border-color: #334155;
-  --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+  /* Semantic Statuses (Dark Mode) */
+  --status-planning-bg: rgba(14, 165, 233, 0.15); --status-planning-text: #7dd3fc;
+  --status-in-progress-bg: rgba(249, 115, 22, 0.15); --status-in-progress-text: #fdba74;
+  --status-paused-bg: rgba(148, 163, 184, 0.15); --status-paused-text: #cbd5e1;
+  --status-completed-bg: rgba(34, 197, 94, 0.15); --status-completed-text: #86efac;
+  --status-cancelled-bg: rgba(239, 68, 68, 0.15); --status-cancelled-text: #fca5a5;
+
+  /* Priorities (Dark Mode) */
+  --priority-low-bg: rgba(148, 163, 184, 0.1); --priority-low-text: #94a3b8;
+  --priority-medium-bg: rgba(59, 130, 246, 0.15); --priority-medium-text: #93c5fd;
+  --priority-high-bg: rgba(249, 115, 22, 0.15); --priority-high-text: #fdba74;
+  --priority-urgent-bg: rgba(239, 68, 68, 0.15); --priority-urgent-text: #fca5a5;
+
+  /* Effects */
+  --shadow-md: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+  --shadow-glow: 0 0 20px rgba(59, 130, 246, 0.2);
 }

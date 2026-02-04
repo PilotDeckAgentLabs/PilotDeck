@@ -276,11 +276,13 @@ function handleDelete() {
 .modal-content {
   background: var(--card-bg);
   border-radius: var(--border-radius);
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  backdrop-filter: var(--backdrop-blur);
+  box-shadow: var(--shadow-lg);
   width: 100%;
   max-height: 90vh;
   display: flex;
   flex-direction: column;
+  border: 1px solid var(--border-color);
 }
 
 .detail-modal {
@@ -319,7 +321,7 @@ function handleDelete() {
 }
 
 .btn-close:hover {
-  background: var(--hover-bg);
+  background: var(--bg-color);
 }
 
 .modal-tabs {
@@ -342,7 +344,7 @@ function handleDelete() {
 }
 
 .tab-btn:hover {
-  background: var(--hover-bg);
+  background: rgba(59, 130, 246, 0.05);
 }
 
 .tab-btn.active {
@@ -394,14 +396,15 @@ function handleDelete() {
 
 .tag {
   padding: 4px 10px;
-  background: var(--tag-bg);
+  background: var(--bg-color);
   border-radius: 4px;
   font-size: 12px;
   color: var(--text-secondary);
+  border: 1px solid var(--border-color);
 }
 
 .text-muted {
-  color: var(--text-secondary);
+  color: var(--text-muted);
 }
 
 .progress-bar-wrapper {
@@ -438,16 +441,16 @@ function handleDelete() {
   font-weight: 500;
 }
 
-.status-planning { background: #dbeafe; color: #1e40af; }
-.status-in-progress { background: #fef3c7; color: #92400e; }
-.status-paused { background: #e5e7eb; color: #374151; }
-.status-completed { background: #d1fae5; color: #065f46; }
-.status-cancelled { background: #fee2e2; color: #991b1b; }
+.status-planning { background: var(--status-planning-bg); color: var(--status-planning-text); }
+.status-in-progress { background: var(--status-in-progress-bg); color: var(--status-in-progress-text); }
+.status-paused { background: var(--status-paused-bg); color: var(--status-paused-text); }
+.status-completed { background: var(--status-completed-bg); color: var(--status-completed-text); }
+.status-cancelled { background: var(--status-cancelled-bg); color: var(--status-cancelled-text); }
 
-.priority-low { background: #f3f4f6; color: #6b7280; }
-.priority-medium { background: #dbeafe; color: #1e40af; }
-.priority-high { background: #fed7aa; color: #9a3412; }
-.priority-urgent { background: #fecaca; color: #991b1b; }
+.priority-low { background: var(--priority-low-bg); color: var(--priority-low-text); }
+.priority-medium { background: var(--priority-medium-bg); color: var(--priority-medium-text); }
+.priority-high { background: var(--priority-high-bg); color: var(--priority-high-text); }
+.priority-urgent { background: var(--priority-urgent-bg); color: var(--priority-urgent-text); }
 
 /* Timeline styles */
 .loading-timeline,
@@ -508,11 +511,12 @@ function handleDelete() {
 }
 
 .timeline-marker.event {
-  background: var(--secondary-color);
+  background: var(--text-secondary);
 }
 
 .timeline-content {
-  background: var(--card-bg);
+  background: rgba(var(--bg-color), 0.5); /* Slight transparency? No, use card-bg but maybe simpler */
+  background: var(--bg-color);
   border: 1px solid var(--border-color);
   border-radius: 8px;
   padding: 12px 16px;
@@ -540,7 +544,7 @@ function handleDelete() {
 }
 
 .timeline-type-badge.event {
-  background: var(--secondary-color);
+  background: var(--text-secondary);
   color: white;
 }
 
@@ -564,10 +568,10 @@ function handleDelete() {
   text-transform: uppercase;
 }
 
-.run-status.pending { background: #fef3c7; color: #92400e; }
-.run-status.running { background: #dbeafe; color: #1e40af; }
-.run-status.completed { background: #d1fae5; color: #065f46; }
-.run-status.failed { background: #fee2e2; color: #991b1b; }
+.run-status.pending { background: var(--status-planning-bg); color: var(--status-planning-text); }
+.run-status.running { background: var(--status-in-progress-bg); color: var(--status-in-progress-text); }
+.run-status.completed { background: var(--status-completed-bg); color: var(--status-completed-text); }
+.run-status.failed { background: var(--status-cancelled-bg); color: var(--status-cancelled-text); }
 
 .run-agent {
   font-size: 12px;
@@ -585,7 +589,7 @@ function handleDelete() {
 .run-result {
   margin-top: 8px;
   padding: 8px 12px;
-  background: var(--bg-secondary);
+  background: rgba(0,0,0,0.05); /* Simple tint */
   border-radius: 4px;
   font-size: 13px;
 }
@@ -599,16 +603,16 @@ function handleDelete() {
   margin-bottom: 8px;
 }
 
-.event-type.status_change { background: #dbeafe; color: #1e40af; }
-.event-type.progress_update { background: #fef3c7; color: #92400e; }
-.event-type.comment { background: #e5e7eb; color: #374151; }
-.event-type.file_added { background: #d1fae5; color: #065f46; }
-.event-type.milestone { background: #fecaca; color: #991b1b; }
+.event-type.status_change { background: var(--status-planning-bg); color: var(--status-planning-text); }
+.event-type.progress_update { background: var(--status-in-progress-bg); color: var(--status-in-progress-text); }
+.event-type.comment { background: var(--status-paused-bg); color: var(--status-paused-text); }
+.event-type.file_added { background: var(--status-completed-bg); color: var(--status-completed-text); }
+.event-type.milestone { background: var(--priority-high-bg); color: var(--priority-high-text); }
 
 .event-data {
   margin-top: 8px;
   padding: 8px 12px;
-  background: var(--bg-secondary);
+  background: rgba(0,0,0,0.05);
   border-radius: 4px;
   overflow-x: auto;
 }
@@ -616,7 +620,7 @@ function handleDelete() {
 .event-data pre {
   margin: 0;
   font-size: 12px;
-  font-family: 'Courier New', monospace;
+  font-family: 'SF Mono', 'Courier New', monospace;
   color: var(--text-primary);
 }
 
@@ -648,16 +652,22 @@ function handleDelete() {
 }
 
 .btn-secondary {
-  background: var(--secondary-color);
-  color: white;
+  background: transparent;
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+}
+
+.btn-secondary:hover {
+  background: var(--bg-color);
 }
 
 .btn-danger {
-  background: #dc2626;
+  background: var(--danger-color);
   color: white;
 }
 
 .btn-danger:hover {
-  background: #b91c1c;
+  background: #dc2626;
+  box-shadow: 0 4px 8px rgba(239, 68, 68, 0.3);
 }
 </style>

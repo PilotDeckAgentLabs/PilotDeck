@@ -212,12 +212,14 @@ function handleSubmit() {
 
 .modal-content {
   background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  backdrop-filter: var(--backdrop-blur);
   border-radius: 12px;
   max-width: 600px;
   width: 100%;
   max-height: 90vh;
   overflow-y: auto;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  box-shadow: var(--shadow-lg);
 }
 
 .modal-header {

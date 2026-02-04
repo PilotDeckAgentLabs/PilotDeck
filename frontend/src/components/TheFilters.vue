@@ -111,6 +111,8 @@ function onViewModeChange(mode: ViewMode) {
   border: 1px solid var(--border-color);
   border-radius: var(--border-radius);
   margin-bottom: 24px;
+  backdrop-filter: var(--backdrop-blur);
+  box-shadow: var(--shadow-sm);
 }
 
 .filter-group {

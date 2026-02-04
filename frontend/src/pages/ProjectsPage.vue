@@ -15,20 +15,24 @@
       <!-- Loading state -->
       <div v-if="loading" class="loading">
         <div class="spinner"></div>
-        <p>加载中...</p>
+        <p>系统连接中...</p>
       </div>
 
       <!-- Error state -->
       <div v-else-if="error" class="error-state">
+        <div class="error-icon">⚠️</div>
+        <h3>连接失败</h3>
         <p>{{ error }}</p>
-        <button @click="loadProjects" class="btn btn-secondary">重试</button>
+        <button @click="loadProjects" class="btn btn-secondary">重试连接</button>
       </div>
 
       <!-- Empty state -->
       <div v-else-if="filteredProjects.length === 0" class="empty-state">
-        <p>{{ projects.length === 0 ? '还没有项目' : '没有符合条件的项目' }}</p>
+        <div class="empty-icon">📂</div>
+        <h3>{{ projects.length === 0 ? '暂无项目' : '未找到匹配项目' }}</h3>
+        <p>{{ projects.length === 0 ? '开始你的第一个项目管理之旅' : '尝试调整筛选条件' }}</p>
         <button v-if="projects.length === 0" @click="openAddModal" class="btn btn-primary">
-          创建第一个项目
+          创建新项目
         </button>
       </div>
 
@@ -62,9 +66,12 @@
               @click="openDetailModal(project)"
               class="clickable-row"
             >
-              <td class="project-name">{{ project.name }}</td>
+              <td class="project-name-cell">
+                <span class="project-name-text">{{ project.name }}</span>
+              </td>
               <td>
                 <span class="badge" :class="`status-${project.status}`">
+                  <span class="status-dot"></span>
                   {{ statusLabels[project.status] || project.status }}
                 </span>
               </td>
@@ -73,12 +80,12 @@
                   {{ priorityLabels[project.priority] || project.priority }}
                 </span>
               </td>
-              <td>{{ project.category || '-' }}</td>
-              <td>
+              <td class="text-secondary">{{ project.category || '-' }}</td>
+              <td class="progress-cell">
                 <div class="progress-bar-wrapper">
                   <div class="progress-bar" :style="{ width: `${project.progress}%` }"></div>
-                  <span class="progress-text">{{ project.progress }}%</span>
                 </div>
+                <span class="progress-text">{{ project.progress }}%</span>
               </td>
               <td>
                 <div class="tags-cell">
@@ -238,53 +245,75 @@ onMounted(() => {
 .projects-page {
   min-height: 100vh;
   background: var(--bg-gradient);
+  padding-bottom: 40px;
 }
 
 .container {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 24px 16px;
+  padding: 24px;
 }
 
+/* States */
 .loading,
 .error-state,
 .empty-state {
   text-align: center;
-  padding: 60px 20px;
+  padding: 80px 20px;
+  color: var(--text-secondary);
 }
 
 .spinner {
-  border: 3px solid rgba(59, 130, 246, 0.2);
+  border: 3px solid rgba(59, 130, 246, 0.1);
   border-top-color: var(--primary-color);
   border-radius: 50%;
-  width: 40px;
-  height: 40px;
+  width: 48px;
+  height: 48px;
   animation: spin 0.8s linear infinite;
-  margin: 0 auto 16px;
+  margin: 0 auto 24px;
 }
 
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
 
-.empty-state .btn {
-  margin-top: 16px;
+.empty-icon, .error-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+.empty-state h3, .error-state h3 {
+  font-size: 18px;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.empty-state .btn, .error-state .btn {
+  margin-top: 24px;
 }
 
 /* Grid view */
 .projects-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 24px;
+  animation: fadeIn 0.4s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 /* Table view */
 .projects-table-wrapper {
   background: var(--card-bg);
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--card-border);
   border-radius: var(--border-radius);
   overflow: hidden;
-  box-shadow: var(--shadow);
+  box-shadow: var(--shadow-md);
+  backdrop-filter: var(--backdrop-blur);
 }
 
 .projects-table {
@@ -293,128 +322,155 @@ onMounted(() => {
 }
 
 .projects-table th {
-  background: var(--header-bg);
-  color: var(--text-primary);
+  background: var(--bg-color);
+  color: var(--text-muted);
   font-weight: 600;
   text-align: left;
-  padding: 12px 16px;
-  font-size: 14px;
-  border-bottom: 2px solid var(--border-color);
+  padding: 16px 20px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .projects-table td {
-  padding: 12px 16px;
+  padding: 16px 20px;
   border-bottom: 1px solid var(--border-color);
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+.projects-table tbody tr {
+  transition: background 0.2s;
+  cursor: pointer;
+}
+
+.projects-table tbody tr:hover {
+  background: rgba(59, 130, 246, 0.05);
+}
+
+.projects-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.project-name-text {
+  font-weight: 600;
   color: var(--text-primary);
 }
 
-.projects-table tbody tr.clickable-row {
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-.projects-table tbody tr.clickable-row:hover {
-  background: var(--hover-bg);
-}
-
-.project-name {
+/* Reuse Badge Styles (Consider extracting to component next time) */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
   font-weight: 500;
-  color: var(--primary-color);
+}
+
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: currentColor;
+}
+
+.status-planning { background: var(--status-planning-bg); color: var(--status-planning-text); }
+.status-in-progress { background: var(--status-in-progress-bg); color: var(--status-in-progress-text); }
+.status-paused { background: var(--status-paused-bg); color: var(--status-paused-text); }
+.status-completed { background: var(--status-completed-bg); color: var(--status-completed-text); }
+.status-cancelled { background: var(--status-cancelled-bg); color: var(--status-cancelled-text); }
+
+.priority-low { background: var(--priority-low-bg); color: var(--priority-low-text); }
+.priority-medium { background: var(--priority-medium-bg); color: var(--priority-medium-text); }
+.priority-high { background: var(--priority-high-bg); color: var(--priority-high-text); }
+.priority-urgent { background: var(--priority-urgent-bg); color: var(--priority-urgent-text); }
+
+.text-secondary { color: var(--text-secondary); }
+.text-muted { color: var(--text-muted); }
+
+/* Progress Bar in Table */
+.progress-cell {
+  min-width: 120px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .progress-bar-wrapper {
-  position: relative;
-  width: 100%;
-  height: 20px;
-  background: var(--bg-secondary);
-  border-radius: 10px;
+  flex: 1;
+  height: 6px;
+  background: var(--bg-color);
+  border-radius: 3px;
   overflow: hidden;
 }
 
 .progress-bar {
   height: 100%;
   background: linear-gradient(90deg, var(--primary-color), var(--primary-hover));
+  border-radius: 3px;
   transition: width 0.3s;
 }
 
 .progress-text {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  font-size: 11px;
-  font-weight: 500;
-  color: var(--text-primary);
+  font-size: 12px;
+  font-family: 'SF Mono', monospace;
+  color: var(--text-secondary);
+  width: 36px;
+  text-align: right;
 }
 
 .tags-cell {
   display: flex;
-  gap: 4px;
+  gap: 6px;
   flex-wrap: wrap;
 }
 
 .tag {
   padding: 2px 8px;
-  background: var(--tag-bg);
+  background: var(--bg-color);
+  border: 1px solid var(--border-color);
   border-radius: 4px;
   font-size: 11px;
   color: var(--text-secondary);
 }
 
-.text-muted {
-  color: var(--text-secondary);
-}
-
-/* Badges */
-.badge {
-  display: inline-block;
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 12px;
-  font-weight: 500;
-}
-
-.status-planning { background: #dbeafe; color: #1e40af; }
-.status-in-progress { background: #fef3c7; color: #92400e; }
-.status-paused { background: #e5e7eb; color: #374151; }
-.status-completed { background: #d1fae5; color: #065f46; }
-.status-cancelled { background: #fee2e2; color: #991b1b; }
-
-.priority-low { background: #f3f4f6; color: #6b7280; }
-.priority-medium { background: #dbeafe; color: #1e40af; }
-.priority-high { background: #fed7aa; color: #9a3412; }
-.priority-urgent { background: #fecaca; color: #991b1b; }
-
-/* Buttons */
+/* Buttons (Global Override for this page if needed) */
 .btn {
   padding: 10px 20px;
   border-radius: 8px;
   border: none;
   cursor: pointer;
   font-size: 14px;
+  font-weight: 500;
   transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .btn-primary {
   background: var(--primary-color);
   color: white;
+  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
 }
 
 .btn-primary:hover {
   background: var(--primary-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(59, 130, 246, 0.4);
 }
 
 .btn-secondary {
-  background: var(--secondary-color);
-  color: white;
+  background: white;
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
 }
 
-.btn-danger {
-  background: #dc2626;
-  color: white;
-}
-
-.btn-danger:hover {
-  background: #b91c1c;
+.btn-secondary:hover {
+  background: var(--bg-color);
+  border-color: var(--primary-color);
+  color: var(--primary-color);
 }
 </style>
