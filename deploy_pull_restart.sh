@@ -127,14 +127,37 @@ fi
 
 # Always install/update dependencies to ensure consistency
 echo "[INFO] Installing frontend dependencies..."
-npm install
+if ! npm install; then
+  echo "[ERROR] npm install failed"
+  echo "[ERROR] Aborting deployment. Service will NOT be restarted."
+  exit 4
+fi
 
 echo "[INFO] Running production build..."
-npm run build
+if ! npm run build; then
+  echo "[ERROR] npm run build failed"
+  echo "[ERROR] Aborting deployment. Service will NOT be restarted."
+  exit 4
+fi
 
 # Verify build output exists
 if [[ ! -d "dist" ]] || [[ ! -f "dist/index.html" ]]; then
   echo "[ERROR] Frontend build failed: dist/index.html not found"
+  echo "[ERROR] Aborting deployment. Service will NOT be restarted."
+  exit 4
+fi
+
+# Verify build artifacts are non-empty
+if [[ ! -s "dist/index.html" ]]; then
+  echo "[ERROR] Frontend build produced empty index.html"
+  echo "[ERROR] Aborting deployment. Service will NOT be restarted."
+  exit 4
+fi
+
+# Double-check: ensure assets directory exists and has files
+if [[ ! -d "dist/assets" ]] || [[ -z "$(ls -A dist/assets 2>/dev/null)" ]]; then
+  echo "[ERROR] Frontend build missing assets directory or assets are empty"
+  echo "[ERROR] Aborting deployment. Service will NOT be restarted."
   exit 4
 fi
 
