@@ -403,12 +403,14 @@ async function handlePullRestart() {
 }
 
 .btn-secondary {
-  background: var(--secondary-color);
-  color: white;
+  background: transparent;
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
 }
 
 .btn-secondary:hover:not(:disabled) {
-  background: #059669;
+  background: var(--bg-secondary);
+  border-color: var(--text-secondary);
 }
 
 .btn-warning {

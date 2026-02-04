@@ -7,6 +7,8 @@
   /* Functional Colors */
   --primary-color: var(--primary-500);
   --primary-hover: var(--primary-600);
+  --secondary-color: #64748b;
+  --secondary-hover: #475569;
   
   /* Semantic Statuses (Light Mode Default) */
   --status-planning-bg: #e0f2fe; --status-planning-text: #0369a1;
@@ -23,6 +25,7 @@
 
   /* Neutrals & Surfaces */
   --bg-color: #f8fafc;
+  --bg-secondary: #f1f5f9;
   --bg-gradient: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
   
   --card-bg: #ffffff;
@@ -61,12 +64,13 @@
 
   /* Deep Space Backgrounds */
   --bg-color: #0f172a;
+  --bg-secondary: #1e293b;
   --bg-gradient: linear-gradient(180deg, #0f172a 0%, #020617 100%);
   
-  --card-bg: rgba(30, 41, 59, 0.6);
-  --card-border: rgba(255, 255, 255, 0.08);
+  --card-bg: rgba(30, 41, 59, 0.9);
+  --card-border: rgba(255, 255, 255, 0.1);
   
-  --header-bg: rgba(15, 23, 42, 0.7);
+  --header-bg: rgba(15, 23, 42, 0.9);
   --header-border: rgba(255, 255, 255, 0.05);
 
   /* Text */

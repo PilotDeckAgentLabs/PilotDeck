@@ -8,10 +8,10 @@
       @refresh="loadProjects"
     />
 
-    <!-- Filters bar -->
-    <TheFilters />
-
     <main class="container">
+      <!-- Filters bar -->
+      <TheFilters />
+
       <!-- Loading state -->
       <div v-if="loading" class="loading">
         <div class="spinner"></div>
@@ -249,7 +249,7 @@ onMounted(() => {
 }
 
 .container {
-  max-width: 1200px;
+  max-width: 1600px;
   margin: 0 auto;
   padding: 24px;
 }
