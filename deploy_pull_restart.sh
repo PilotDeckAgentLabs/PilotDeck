@@ -9,10 +9,17 @@ set -euo pipefail
 # - Run on the SERVER (Linux)
 # - Repo already cloned
 # - Port must be 8689
+# - Node.js version matches .nvmrc (enforced below)
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SERVICE_NAME="pilotdeck"
 PORT="8689"
+
+# Required Node.js version (read from .nvmrc)
+REQUIRED_NODE_VERSION=""
+if [[ -f "$ROOT_DIR/.nvmrc" ]]; then
+  REQUIRED_NODE_VERSION=$(cat "$ROOT_DIR/.nvmrc" | tr -d '[:space:]')
+fi
 
 echo "[INFO] ===== Deploy diagnostics ====="
 echo "[INFO] whoami: $(whoami 2>/dev/null || true)"
@@ -22,6 +29,9 @@ echo "[INFO] ROOT_DIR: ${ROOT_DIR}"
 echo "[INFO] PATH: ${PATH}"
 echo "[INFO] SHELL: ${SHELL:-}"
 echo "[INFO] HOME: ${HOME:-}"
+if [[ -n "$REQUIRED_NODE_VERSION" ]]; then
+  echo "[INFO] Required Node.js version: ${REQUIRED_NODE_VERSION}"
+fi
 
 # Prefer /usr/local/bin/python3 (user-managed symlink to python3.8+).
 # Do NOT repoint /usr/bin/python to avoid breaking system tooling.
@@ -217,6 +227,40 @@ if [[ -z "$NPM_BIN" ]]; then
 fi
 
 echo "[INFO] npm: $($NPM_BIN -v 2>&1 || true) at $NPM_BIN"
+
+# ===== CRITICAL: Verify Node.js version matches .nvmrc =====
+if [[ -n "$REQUIRED_NODE_VERSION" ]] && [[ -n "$NODE_BIN" ]]; then
+  CURRENT_NODE_VERSION=$($NODE_BIN -v 2>&1 || echo "unknown")
+  echo "[INFO] Verifying Node.js version..."
+  echo "[INFO]   Required: ${REQUIRED_NODE_VERSION}"
+  echo "[INFO]   Current:  ${CURRENT_NODE_VERSION}"
+  
+  if [[ "$CURRENT_NODE_VERSION" != "$REQUIRED_NODE_VERSION" ]]; then
+    echo ""
+    echo "[ERROR] ========================================="
+    echo "[ERROR] Node.js version mismatch!"
+    echo "[ERROR] ========================================="
+    echo "[ERROR] Required: ${REQUIRED_NODE_VERSION} (from .nvmrc)"
+    echo "[ERROR] Current:  ${CURRENT_NODE_VERSION}"
+    echo ""
+    echo "[HINT] Install the correct version:"
+    echo ""
+    echo "  Using nvm (recommended):"
+    echo "    nvm install ${REQUIRED_NODE_VERSION}"
+    echo "    nvm use ${REQUIRED_NODE_VERSION}"
+    echo "    nvm alias default ${REQUIRED_NODE_VERSION}"
+    echo ""
+    echo "  Or install specific version from NodeSource:"
+    echo "    # For CentOS/RHEL:"
+    echo "    curl -fsSL https://rpm.nodesource.com/setup_20.x | sudo bash -"
+    echo "    sudo yum install -y nodejs-20.18.1"
+    echo ""
+    exit 3
+  fi
+  
+  echo "[INFO] ✓ Node.js version verified: ${CURRENT_NODE_VERSION}"
+fi
+
 echo "[INFO] Building frontend..."
 cd "$ROOT_DIR/frontend"
 

@@ -53,6 +53,21 @@
 
 ## 快速开始（本地）
 
+### 0) 环境要求
+
+**Node.js 版本**: v22.14.0 - **必须严格匹配**
+
+```bash
+# 使用 nvm 安装（推荐）
+nvm install
+nvm use
+
+# 或手动安装 Node.js v22.14.0
+# 下载地址: https://nodejs.org/
+```
+
+详细说明见 [NODE_VERSION.md](./NODE_VERSION.md)
+
 ### 1) 安装依赖
 
 ```bash
@@ -75,7 +90,13 @@ python server/main.py
 
 ```bash
 cd frontend
+
+# 使用 npm ci 确保依赖版本一致（推荐）
+npm ci
+
+# 或使用 npm install
 npm install
+
 npm run build
 ```
 
