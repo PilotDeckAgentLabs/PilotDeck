@@ -1,0 +1,74 @@
+schema_version: 1
+
+project:
+  key: "pilotdeck"
+  name: "PilotDeck"
+  repo: "local-repo"
+  owner: "maintainer"
+
+pilotdeck:
+  base_url: "http://182.92.109.59:8689/api"
+  project_id: "proj-46e1c1d8"
+  agent_id: "opencode/sisyphus"
+  agent_token_env: "PM_AGENT_TOKEN"
+
+status:
+  lifecycle: "in-progress"
+  priority: "medium"
+  progress: 70
+  category: "platform"
+  tags: ["pilotdeck", "agent", "project-management"]
+
+summary:
+  goal: "Provide a self-hosted project management and agent collaboration console"
+  success_criteria:
+    - "Agents can update project status via Agent API"
+    - "Status documents stay in sync with PilotDeck"
+
+milestones:
+  - name: "Core API and UI"
+    status: "done"
+    due: "2026-02-01"
+    notes: "Agent API, projects, events, runs, and Vue UI available"
+  - name: "Project status template"
+    status: "done"
+    due: "2026-02-05"
+    notes: "Added status template and skill design docs"
+  - name: "PilotDeckSkill workflow"
+    status: "doing"
+    due: "2026-02-10"
+
+next_actions:
+  - "Wire a runnable PilotDeckSkill sync command"
+  - "Sync status.yaml into PilotDeck via actions/events"
+
+risks:
+  - title: "Concurrent updates"
+    impact: "Progress overwritten by multiple agents"
+    mitigation: "Use updatedAt + ifUpdatedAt conflict handling"
+
+dependencies:
+  - name: "PilotDeck server"
+    status: "available"
+    notes: "Running at 182.92.109.59:8689"
+
+links:
+  - title: "ARCHITECTURE"
+    url: "docs/ARCHITECTURE.zh-CN.md"
+  - title: "AGENT_API"
+    url: "docs/AGENT_API.zh-CN.md"
+
+activity_log:
+  - ts: "2026-02-05T00:20:00+08:00"
+    author: "opencode/sisyphus"
+    summary: "Generated initial status document"
+    details: "Created pilotdeck/status.yaml from template"
+  - ts: "2026-02-05T00:25:43+08:00"
+    author: "opencode/sisyphus"
+    summary: "Synced status to PilotDeck"
+    details: "Updated project status/priority/progress/tags via Agent API"
+
+sync_state:
+  last_sync_at: "2026-02-05T00:25:43+08:00"
+  last_sync_result: "success"
+  last_project_updated_at: "2026-02-05T00:24:38.669343"
