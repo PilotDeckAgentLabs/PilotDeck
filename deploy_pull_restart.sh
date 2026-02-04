@@ -55,11 +55,51 @@ echo "[INFO] Pulling latest..."
 # git pull --rebase requires a clean working tree.
 # NOTE: data lives under ./data (ignored by this repo),
 # so local runtime data will NOT block code deploys.
+
+# Auto-reset common files that get modified during deployment
+# (package-lock.json gets updated by npm ci/install)
 if ! git diff --quiet || ! git diff --cached --quiet; then
-  echo "[ERROR] Working tree has local changes; cannot pull with rebase."
-  echo "[HINT] Commit/stash your local code changes on the server, then retry."
-  git status --porcelain || true
-  exit 2
+  echo "[INFO] Working tree has local changes. Checking if auto-reset is safe..."
+  
+  # Get list of modified files
+  MODIFIED_FILES=$(git diff --name-only)
+  STAGED_FILES=$(git diff --cached --name-only)
+  ALL_CHANGED="$MODIFIED_FILES $STAGED_FILES"
+  
+  # Files that are safe to auto-reset (modified by build process)
+  SAFE_TO_RESET=(
+    "frontend/package-lock.json"
+  )
+  
+  # Check if all changes are in the safe list
+  AUTO_RESET_OK=1
+  for file in $ALL_CHANGED; do
+    IS_SAFE=0
+    for safe_pattern in "${SAFE_TO_RESET[@]}"; do
+      if [[ "$file" == "$safe_pattern" ]]; then
+        IS_SAFE=1
+        break
+      fi
+    done
+    if [[ $IS_SAFE -eq 0 ]]; then
+      AUTO_RESET_OK=0
+      break
+    fi
+  done
+  
+  if [[ $AUTO_RESET_OK -eq 1 ]]; then
+    echo "[INFO] Only build-generated files changed. Auto-resetting..."
+    for file in $ALL_CHANGED; do
+      echo "[INFO]   Resetting: $file"
+      git checkout HEAD -- "$file" 2>/dev/null || true
+    done
+  else
+    echo "[ERROR] Working tree has local changes that cannot be auto-reset."
+    echo "[HINT] Please commit or stash your changes, then retry."
+    echo ""
+    git status --porcelain || true
+    exit 2
+  fi
 fi
 
 git fetch --all --prune
