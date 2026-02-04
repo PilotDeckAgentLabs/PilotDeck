@@ -82,15 +82,18 @@ if command -v npm >/dev/null 2>&1; then
   echo "[INFO] Building frontend..."
   cd "$ROOT_DIR/frontend"
   
-  # Check if node_modules exists, if not install dependencies
-  if [[ ! -d "node_modules" ]]; then
-    echo "[INFO] Installing frontend dependencies..."
-    npm install
-  fi
+  # Always install/update dependencies to ensure consistency
+  echo "[INFO] Installing frontend dependencies..."
+  npm install
   
   # Build production bundle
   echo "[INFO] Running production build..."
-  npx vite build
+  # Use npx from local node_modules if possible, or global
+  if [[ -f "node_modules/.bin/vite" ]]; then
+    ./node_modules/.bin/vite build
+  else
+    npx vite build
+  fi
   
   echo "[INFO] Frontend build complete. Output: frontend/dist/"
   cd "$ROOT_DIR"

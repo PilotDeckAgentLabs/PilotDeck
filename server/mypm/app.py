@@ -125,8 +125,13 @@ def create_app(config: Config = None) -> Flask:
         # Serve static assets if they exist, otherwise fall back to SPA index.
         full = os.path.join(config.FRONTEND_DIST_DIR, path)
         if path != 'index.html' and os.path.exists(full):
+            # Static assets (hashed) can be cached forever-ish, but let Flask default handle it.
             return send_from_directory(config.FRONTEND_DIST_DIR, path)
-        return send_from_directory(config.FRONTEND_DIST_DIR, 'index.html')
+        
+        # SPA index.html should NOT be cached to ensure updates are seen immediately.
+        response = send_from_directory(config.FRONTEND_DIST_DIR, 'index.html')
+        response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+        return response
     
     # Error handlers
     @app.errorhandler(404)
