@@ -55,14 +55,14 @@
 
 ### 0) 环境要求
 
-**Node.js 版本**: v22.14.0 - **必须严格匹配**
+**Node.js 版本**: v22.x（22 系列的任意小版本）
 
 ```bash
 # 使用 nvm 安装（推荐）
-nvm install
-nvm use
+nvm install 22
+nvm use 22
 
-# 或手动安装 Node.js v22.14.0
+# 或手动安装 Node.js v22.x
 # 下载地址: https://nodejs.org/
 ```
 

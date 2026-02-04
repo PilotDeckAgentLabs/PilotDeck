@@ -228,37 +228,43 @@ fi
 
 echo "[INFO] npm: $($NPM_BIN -v 2>&1 || true) at $NPM_BIN"
 
-# ===== CRITICAL: Verify Node.js version matches .nvmrc =====
+# ===== CRITICAL: Verify Node.js version matches .nvmrc (major version) =====
 if [[ -n "$REQUIRED_NODE_VERSION" ]] && [[ -n "$NODE_BIN" ]]; then
   CURRENT_NODE_VERSION=$($NODE_BIN -v 2>&1 || echo "unknown")
   echo "[INFO] Verifying Node.js version..."
-  echo "[INFO]   Required: ${REQUIRED_NODE_VERSION}"
+  echo "[INFO]   Required: ${REQUIRED_NODE_VERSION}.x (from .nvmrc)"
   echo "[INFO]   Current:  ${CURRENT_NODE_VERSION}"
   
-  if [[ "$CURRENT_NODE_VERSION" != "$REQUIRED_NODE_VERSION" ]]; then
+  # Extract major version from current (e.g., v22.22.0 → 22)
+  CURRENT_MAJOR=$(echo "$CURRENT_NODE_VERSION" | sed -E 's/^v?([0-9]+)\..*/\1/')
+  # Extract major version from required (e.g., 22 or v22 → 22)
+  REQUIRED_MAJOR=$(echo "$REQUIRED_NODE_VERSION" | sed -E 's/^v?([0-9]+).*/\1/')
+  
+  if [[ "$CURRENT_MAJOR" != "$REQUIRED_MAJOR" ]]; then
     echo ""
     echo "[ERROR] ========================================="
-    echo "[ERROR] Node.js version mismatch!"
+    echo "[ERROR] Node.js major version mismatch!"
     echo "[ERROR] ========================================="
-    echo "[ERROR] Required: ${REQUIRED_NODE_VERSION} (from .nvmrc)"
+    echo "[ERROR] Required: v${REQUIRED_MAJOR}.x (from .nvmrc)"
     echo "[ERROR] Current:  ${CURRENT_NODE_VERSION}"
     echo ""
-    echo "[HINT] Install the correct version:"
+    echo "[HINT] Install any version from the v${REQUIRED_MAJOR}.x series:"
     echo ""
     echo "  Using nvm (recommended):"
-    echo "    nvm install ${REQUIRED_NODE_VERSION}"
-    echo "    nvm use ${REQUIRED_NODE_VERSION}"
-    echo "    nvm alias default ${REQUIRED_NODE_VERSION}"
+    echo "    nvm install ${REQUIRED_MAJOR}"
+    echo "    nvm use ${REQUIRED_MAJOR}"
+    echo "    nvm alias default ${REQUIRED_MAJOR}"
     echo ""
-    echo "  Or install specific version from NodeSource:"
+    echo "  Or install from NodeSource:"
     echo "    # For CentOS/RHEL:"
-    echo "    curl -fsSL https://rpm.nodesource.com/setup_20.x | sudo bash -"
-    echo "    sudo yum install -y nodejs-20.18.1"
+    echo "    curl -fsSL https://rpm.nodesource.com/setup_${REQUIRED_MAJOR}.x | sudo bash -"
+    echo "    sudo yum install -y nodejs"
     echo ""
     exit 3
   fi
   
-  echo "[INFO] ✓ Node.js version verified: ${CURRENT_NODE_VERSION}"
+  echo "[INFO] ✓ Node.js major version verified: v${CURRENT_MAJOR}.x (${CURRENT_NODE_VERSION})"
+  echo "[INFO] ✓ npm version: $($NPM_BIN -v 2>&1 || echo 'unknown')"
 fi
 
 echo "[INFO] Building frontend..."
