@@ -1,5 +1,5 @@
 <template>
-  <div class="modal-overlay" @click.self="closeModal">
+  <div class="modal-overlay">
     <div class="modal-content ops-modal">
       <div class="modal-header">
         <h2>运维操作</h2>
@@ -58,9 +58,9 @@
           <div class="status-message">{{ statusMessage }}</div>
         </div>
 
-        <div v-if="output" class="output-section">
-          <label>输出</label>
-          <pre class="output-content">{{ output }}</pre>
+        <div v-if="output || statusType === 'running'" class="output-section">
+          <label>部署日志</label>
+          <pre class="output-content">{{ output || '等待日志...（服务重启期间可能短暂不可用）' }}</pre>
         </div>
 
         <div class="ops-info">
@@ -95,8 +95,13 @@ const statusMessage = ref('')
 const output = ref('')
 
 let deployPollTimer: number | null = null
+let deployPollHadError = false
 
 function closeModal() {
+  if (statusType.value === 'running') {
+    const ok = confirm('部署仍在进行中，关闭后将停止日志轮询。确定关闭吗？')
+    if (!ok) return
+  }
   stopDeployPolling()
   emit('close')
 }
@@ -110,14 +115,17 @@ function stopDeployPolling() {
 
 function startDeployPolling() {
   stopDeployPolling()
+  deployPollHadError = false
 
-  deployPollTimer = window.setInterval(async () => {
+  const pollOnce = async () => {
     if (!token.value) return
     try {
       const [st, log] = await Promise.all([
         opsGetDeployStatus(token.value),
         opsGetDeployLog(token.value),
       ])
+
+      deployPollHadError = false
 
       if (log && Array.isArray(log.lines)) {
         output.value = log.lines.join('\n')
@@ -144,8 +152,23 @@ function startDeployPolling() {
         return
       }
     } catch {
-      // transient errors during restart; ignore
+      // expected during restart: keep UI stable and show a one-time hint
+      if (!deployPollHadError) {
+        deployPollHadError = true
+        statusType.value = 'running'
+        statusMessage.value = '服务重启中，等待恢复连接...'
+        if (!output.value) {
+          output.value = '服务重启中，暂时无法获取日志。请稍候...'
+        }
+      }
     }
+  }
+
+  // Run immediately so users can see logs/status ASAP
+  void pollOnce()
+
+  deployPollTimer = window.setInterval(() => {
+    void pollOnce()
   }, 1500)
 }
 
@@ -254,7 +277,7 @@ async function handlePullRestart() {
     const result = await opsPullRestart(token.value)
     statusType.value = 'success'
     statusMessage.value = '已触发部署（服务会短暂重启）'
-    output.value = JSON.stringify(result, null, 2)
+    output.value = `已触发部署。\n\n${JSON.stringify(result, null, 2)}`
     showToast('已触发部署', 'success')
 
     statusType.value = 'running'
