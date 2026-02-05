@@ -154,8 +154,11 @@ for bin_path in /usr/bin /usr/local/bin /opt/homebrew/bin; do
 done
 
 # If not found, try loading nvm
-if [[ -z "$NPM_BIN" ]] && ! command -v npm >/dev/null 2>&1; then
-  echo "[INFO] npm not found on PATH. Attempting to load nvm..."
+  if [[ -z "$NPM_BIN" ]] && ! command -v npm >/dev/null 2>&1; then
+    echo "[INFO] npm not found on PATH. Attempting to load nvm..."
+    if [[ -z "${HOME:-}" ]]; then
+      export HOME="$(eval echo ~$(logname 2>/dev/null || echo root))"
+    fi
   
   # Try multiple common nvm locations
   NVM_SEARCH_PATHS=(
