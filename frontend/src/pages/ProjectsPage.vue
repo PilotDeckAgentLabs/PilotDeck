@@ -82,10 +82,12 @@
               </td>
               <td class="text-secondary">{{ project.category || '-' }}</td>
               <td class="progress-cell">
-                <div class="progress-bar-wrapper">
-                  <div class="progress-bar" :style="{ width: `${project.progress}%` }"></div>
+                <div class="progress-cell-inner">
+                  <div class="progress-bar-wrapper">
+                    <div class="progress-bar" :style="{ width: `${project.progress}%` }"></div>
+                  </div>
+                  <span class="progress-text">{{ project.progress }}%</span>
                 </div>
-                <span class="progress-text">{{ project.progress }}%</span>
               </td>
               <td>
                 <div class="tags-cell">
@@ -393,6 +395,9 @@ onMounted(() => {
 /* Progress Bar in Table */
 .progress-cell {
   min-width: 120px;
+}
+
+.progress-cell-inner {
   display: flex;
   align-items: center;
   gap: 12px;

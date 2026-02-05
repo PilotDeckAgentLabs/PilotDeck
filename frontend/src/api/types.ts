@@ -22,6 +22,8 @@ export interface Project {
   tags: string[]
   cost: CostRevenue
   revenue: CostRevenue
+  budget: number
+  actualCost: number
   createdAt: string  // ISO 8601
   updatedAt: string  // ISO 8601
   github?: string

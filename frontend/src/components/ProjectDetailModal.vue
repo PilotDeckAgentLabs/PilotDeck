@@ -68,22 +68,22 @@
         <div class="detail-row">
           <div class="detail-section">
             <label>创建时间</label>
-            <p>{{ formatDate(project.created_at) }}</p>
+            <p>{{ formatDate(project.createdAt) }}</p>
           </div>
           <div class="detail-section">
             <label>更新时间</label>
-            <p>{{ formatDate(project.updated_at) }}</p>
+            <p>{{ formatDate(project.updatedAt) }}</p>
           </div>
         </div>
 
-        <div v-if="project.budget" class="detail-row">
+        <div class="detail-row">
           <div class="detail-section">
             <label>预算 (元)</label>
-            <p>{{ project.budget.toLocaleString() }}</p>
+            <p>{{ formatMoney(getBudgetValue(project.budget)) }}</p>
           </div>
           <div class="detail-section">
             <label>已花费 (元)</label>
-            <p>{{ (project.actual_cost || 0).toLocaleString() }}</p>
+            <p>{{ formatMoney(getActualCostValue(project)) }}</p>
           </div>
         </div>
       </div>
@@ -247,8 +247,50 @@ async function loadTimeline() {
   }
 }
 
-function formatDate(date: string): string {
-  return new Date(date).toLocaleString('zh-CN')
+function formatDate(date?: string | null): string {
+  if (!date) {
+    return '-'
+  }
+  const parsed = new Date(date)
+  if (Number.isNaN(parsed.getTime())) {
+    return '-'
+  }
+  return parsed.toLocaleString('zh-CN')
+}
+
+function formatMoney(value: number): string {
+  const safeValue = Number.isFinite(value) ? value : 0
+  return safeValue.toLocaleString('zh-CN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })
+}
+
+function getBudgetValue(value: unknown): number {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value
+  }
+  if (value && typeof value === 'object') {
+    const planned = (value as { planned?: unknown; total?: unknown; amount?: unknown }).planned
+      ?? (value as { planned?: unknown; total?: unknown; amount?: unknown }).total
+      ?? (value as { planned?: unknown; total?: unknown; amount?: unknown }).amount
+    const num = Number(planned)
+    return Number.isFinite(num) ? num : 0
+  }
+  const num = Number(value)
+  return Number.isFinite(num) ? num : 0
+}
+
+function getActualCostValue(project: Project): number {
+  const raw = (project as { actualCost?: unknown; actual_cost?: unknown }).actualCost
+    ?? (project as { actualCost?: unknown; actual_cost?: unknown }).actual_cost
+  if (raw !== undefined && raw !== null) {
+    const num = Number(raw)
+    return Number.isFinite(num) ? num : 0
+  }
+  const cost = (project as { cost?: { total?: unknown } }).cost
+  if (cost && typeof cost === 'object') {
+    const num = Number(cost.total)
+    return Number.isFinite(num) ? num : 0
+  }
+  return 0
 }
 
 function handleDelete() {
