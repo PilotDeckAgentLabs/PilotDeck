@@ -141,6 +141,55 @@ def normalize_project(p: Any) -> Tuple[Project, bool]:
             project[key] = {'total': 0}
             changed = True
 
+    # Budget (number) and actual cost (number)
+    budget = project.get('budget')
+    budget_value = 0.0
+    if isinstance(budget, dict):
+        planned = budget.get('planned')
+        if planned is None:
+            planned = budget.get('total')
+        if planned is None:
+            planned = budget.get('amount')
+        try:
+            budget_value = float(planned) if planned is not None else 0.0
+        except Exception:
+            budget_value = 0.0
+    elif isinstance(budget, (int, float)):
+        budget_value = float(budget)
+    elif budget is not None:
+        try:
+            budget_value = float(budget)
+        except Exception:
+            budget_value = 0.0
+    if budget_value < 0:
+        budget_value = 0.0
+    if project.get('budget') != budget_value:
+        project['budget'] = budget_value
+        changed = True
+
+    actual_cost = project.get('actualCost')
+    if actual_cost is None:
+        actual_cost = project.get('actual_cost')
+    if actual_cost is None:
+        cost_obj = project.get('cost')
+        if isinstance(cost_obj, dict):
+            actual_cost = cost_obj.get('total')
+        elif isinstance(cost_obj, (int, float)):
+            actual_cost = cost_obj
+    actual_value = 0.0
+    if isinstance(actual_cost, (int, float)):
+        actual_value = float(actual_cost)
+    elif actual_cost is not None:
+        try:
+            actual_value = float(actual_cost)
+        except Exception:
+            actual_value = 0.0
+    if actual_value < 0:
+        actual_value = 0.0
+    if project.get('actualCost') != actual_value:
+        project['actualCost'] = actual_value
+        changed = True
+
     return project, changed
 
 

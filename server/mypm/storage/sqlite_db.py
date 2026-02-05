@@ -10,6 +10,7 @@ Design goals:
 
 from __future__ import annotations
 
+import json
 import os
 import sqlite3
 from typing import Callable, List
@@ -136,3 +137,65 @@ def _v1_init(conn: sqlite3.Connection) -> None:
         CREATE INDEX IF NOT EXISTS idx_events_type ON agent_events(type);
         """
     )
+
+
+@migration
+def _v2_add_project_budget_fields(conn: sqlite3.Connection) -> None:
+    conn.execute('ALTER TABLE projects ADD COLUMN budget REAL NOT NULL DEFAULT 0')
+    conn.execute('ALTER TABLE projects ADD COLUMN actual_cost REAL NOT NULL DEFAULT 0')
+
+    rows = conn.execute('SELECT id, payload_json FROM projects').fetchall()
+    for row in rows:
+        try:
+            payload = json.loads(row['payload_json'])
+        except Exception:
+            payload = {}
+
+        budget = 0.0
+        raw_budget = payload.get('budget') if isinstance(payload, dict) else None
+        if isinstance(raw_budget, dict):
+            planned = raw_budget.get('planned')
+            if planned is None:
+                planned = raw_budget.get('total')
+            if planned is None:
+                planned = raw_budget.get('amount')
+            try:
+                budget = float(planned) if planned is not None else 0.0
+            except Exception:
+                budget = 0.0
+        elif isinstance(raw_budget, (int, float)):
+            budget = float(raw_budget)
+        elif raw_budget is not None:
+            try:
+                budget = float(raw_budget)
+            except Exception:
+                budget = 0.0
+        if budget < 0:
+            budget = 0.0
+
+        actual_cost = 0.0
+        raw_actual = None
+        if isinstance(payload, dict):
+            raw_actual = payload.get('actualCost')
+            if raw_actual is None:
+                raw_actual = payload.get('actual_cost')
+            if raw_actual is None:
+                cost_obj = payload.get('cost')
+                if isinstance(cost_obj, dict):
+                    raw_actual = cost_obj.get('total')
+                elif isinstance(cost_obj, (int, float)):
+                    raw_actual = cost_obj
+        if isinstance(raw_actual, (int, float)):
+            actual_cost = float(raw_actual)
+        elif raw_actual is not None:
+            try:
+                actual_cost = float(raw_actual)
+            except Exception:
+                actual_cost = 0.0
+        if actual_cost < 0:
+            actual_cost = 0.0
+
+        conn.execute(
+            'UPDATE projects SET budget=?, actual_cost=? WHERE id=?',
+            (budget, actual_cost, row['id'])
+        )

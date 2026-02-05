@@ -67,10 +67,24 @@ class ProjectsStore:
         created_at = str(payload.get('createdAt') or _now())
         updated_at = str(payload.get('updatedAt') or created_at)
 
+        try:
+            budget = float(payload.get('budget') or 0)
+        except Exception:
+            budget = 0.0
+        if budget < 0:
+            budget = 0.0
+
+        try:
+            actual_cost = float(payload.get('actualCost') or 0)
+        except Exception:
+            actual_cost = 0.0
+        if actual_cost < 0:
+            actual_cost = 0.0
+
         conn.execute(
             (
-                'INSERT INTO projects(id, sort_order, name, status, priority, category, progress, created_at, updated_at, payload_json) '
-                'VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+                'INSERT INTO projects(id, sort_order, name, status, priority, category, progress, created_at, updated_at, budget, actual_cost, payload_json) '
+                'VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
             ),
             (
                 str(payload.get('id')),
@@ -82,6 +96,8 @@ class ProjectsStore:
                 int(progress),
                 created_at,
                 updated_at,
+                float(budget),
+                float(actual_cost),
                 _json_dumps(payload),
             ),
         )
@@ -98,6 +114,8 @@ class ProjectsStore:
             payload['progress'] = row['progress']
             payload['createdAt'] = row['created_at']
             payload['updatedAt'] = row['updated_at']
+            payload['budget'] = row['budget']
+            payload['actualCost'] = row['actual_cost']
             return payload
         # Fallback: should never happen.
         return {
@@ -109,6 +127,8 @@ class ProjectsStore:
             'progress': row['progress'],
             'createdAt': row['created_at'],
             'updatedAt': row['updated_at'],
+            'budget': row['budget'],
+            'actualCost': row['actual_cost'],
         }
 
     def last_updated(self) -> Optional[str]:
@@ -208,7 +228,7 @@ class ProjectsStore:
 
                 conn.execute(
                     (
-                        'UPDATE projects SET name=?, status=?, priority=?, category=?, progress=?, updated_at=?, payload_json=? '
+                        'UPDATE projects SET name=?, status=?, priority=?, category=?, progress=?, updated_at=?, budget=?, actual_cost=?, payload_json=? '
                         'WHERE id=?'
                     ),
                     (
@@ -218,6 +238,8 @@ class ProjectsStore:
                         str(np.get('category')) if np.get('category') is not None else None,
                         int(np.get('progress') or 0),
                         str(np.get('updatedAt') or _now()),
+                        float(np.get('budget') or 0),
+                        float(np.get('actualCost') or 0),
                         _json_dumps(np),
                         project_id,
                     ),
@@ -326,7 +348,7 @@ class ProjectsStore:
                             np, _ = normalize_project(cur)
                             conn.execute(
                                 (
-                                    'UPDATE projects SET name=?, status=?, priority=?, category=?, progress=?, updated_at=?, payload_json=? '
+                                    'UPDATE projects SET name=?, status=?, priority=?, category=?, progress=?, updated_at=?, budget=?, actual_cost=?, payload_json=? '
                                     'WHERE id=?'
                                 ),
                                 (
@@ -336,6 +358,8 @@ class ProjectsStore:
                                     str(np.get('category')) if np.get('category') is not None else None,
                                     int(np.get('progress') or 0),
                                     str(np.get('updatedAt') or _now()),
+                                    float(np.get('budget') or 0),
+                                    float(np.get('actualCost') or 0),
                                     _json_dumps(np),
                                     pid,
                                 ),
@@ -397,6 +421,8 @@ class ProjectsStore:
                     stats['financial']['totalBudget'] += float(budget.get('planned') or 0)
                 except Exception:
                     pass
+            elif isinstance(budget, (int, float)):
+                stats['financial']['totalBudget'] += float(budget)
             cost = p.get('cost')
             if isinstance(cost, dict) and 'total' in cost:
                 try:
