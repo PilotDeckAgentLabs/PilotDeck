@@ -15,7 +15,7 @@ pilotdeck:
 status:
   lifecycle: "in-progress"
   priority: "medium"
-  progress: 70
+  progress: 72
   category: "platform"
   tags: ["pilotdeck", "agent", "project-management"]
 
@@ -67,8 +67,12 @@ activity_log:
     author: "opencode/sisyphus"
     summary: "Synced status to PilotDeck"
     details: "Updated project status/priority/progress/tags via Agent API"
+  - ts: "2026-02-05T21:07:45+08:00"
+    author: "opencode/sisyphus"
+    summary: "Fixed progress column and project detail fields"
+    details: "Aligned table borders, normalized budget/actual cost, and updated progress sync"
 
 sync_state:
-  last_sync_at: "2026-02-05T00:25:43+08:00"
+  last_sync_at: "2026-02-05T21:07:45+08:00"
   last_sync_result: "success"
-  last_project_updated_at: "2026-02-05T00:24:38.669343"
+  last_project_updated_at: "2026-02-05T21:07:28.153805"
