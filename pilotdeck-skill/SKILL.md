@@ -1,5 +1,5 @@
 ---
-name: PILOTDECK_SKILL
+name: pilotdeck-skill
 description: Create and run a PilotDeck project-sync workflow for agents. Use when you need to keep a local project status file in sync with PilotDeck, update project fields, write events, or manage agent runs via the PilotDeck Agent API.
 ---
 

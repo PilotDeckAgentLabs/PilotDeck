@@ -160,10 +160,12 @@ if [[ -z "$NPM_BIN" ]] && ! command -v npm >/dev/null 2>&1; then
   # Try multiple common nvm locations
   NVM_SEARCH_PATHS=(
     "${NVM_DIR:-}"
-    "$HOME/.nvm"
     "/root/.nvm"
     "$(eval echo ~$(logname 2>/dev/null || echo root))/.nvm"
   )
+  if [[ -n "${HOME:-}" ]]; then
+    NVM_SEARCH_PATHS+=("$HOME/.nvm")
+  fi
   
   NVM_LOADED=0
   for nvm_path in "${NVM_SEARCH_PATHS[@]}"; do
