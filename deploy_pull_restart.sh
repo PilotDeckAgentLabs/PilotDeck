@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Ensure HOME is set for non-interactive/systemd environments.
+if [[ -z "${HOME:-}" ]]; then
+  export HOME="$(eval echo ~$(logname 2>/dev/null || echo root))"
+fi
+
 # Pull latest from GitHub and restart service on server.
 # Usage:
 #   ./deploy_pull_restart.sh
