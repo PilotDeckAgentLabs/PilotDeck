@@ -102,6 +102,74 @@ class SmokeTestAPI(unittest.TestCase):
         self.assertTrue(r0b.get('success'), r0b)
         self.assertEqual(r0b.get('message'), 'action exists')
 
+    def test_agent_profiles_and_token_usage_stats(self):
+        # Agent profile CRUD-lite
+        resp_create = self.client.post('/api/agent/profiles', json={
+            'name': 'Desktop Planner',
+            'role': 'planner',
+            'skills': ['pilotdeck-skill'],
+            'writebackPolicy': 'minimal',
+        })
+        self.assertEqual(resp_create.status_code, 201, resp_create.get_data(as_text=True))
+        body_create = resp_create.get_json()
+        self.assertTrue(body_create.get('success'), body_create)
+        profile = body_create['data']
+        pid = profile['id']
+
+        resp_patch = self.client.patch(f'/api/agent/profiles/{pid}', json={'enabled': False})
+        self.assertEqual(resp_patch.status_code, 200, resp_patch.get_data(as_text=True))
+        patched = resp_patch.get_json()['data']
+        self.assertFalse(bool(patched.get('enabled')))
+
+        resp_list = self.client.get('/api/agent/profiles')
+        self.assertEqual(resp_list.status_code, 200, resp_list.get_data(as_text=True))
+        listed = resp_list.get_json()['data']
+        self.assertTrue(any(str(x.get('id')) == pid for x in listed), listed)
+
+        # Token usage ingest and aggregation
+        usage_payload = {
+            'records': [
+                {
+                    'id': 'usage-smoke-001',
+                    'projectId': 'proj-smoke',
+                    'agentId': 'desktop-agent',
+                    'workspace': 'E:/work/repo-a',
+                    'source': 'opencode',
+                    'model': 'gpt-5.3-codex',
+                    'promptTokens': 100,
+                    'completionTokens': 40,
+                    'totalTokens': 140,
+                    'cost': 0.12,
+                    'ts': '2026-02-06T10:00:00',
+                },
+                {
+                    'id': 'usage-smoke-002',
+                    'projectId': 'proj-smoke',
+                    'agentId': 'desktop-agent',
+                    'workspace': 'E:/work/repo-a',
+                    'source': 'opencode',
+                    'model': 'gpt-5.3-codex',
+                    'promptTokens': 60,
+                    'completionTokens': 20,
+                    'totalTokens': 80,
+                    'cost': 0.05,
+                    'ts': '2026-02-06T11:00:00',
+                },
+            ]
+        }
+        resp_usage = self.client.post('/api/agent/usage', json=usage_payload)
+        self.assertEqual(resp_usage.status_code, 200, resp_usage.get_data(as_text=True))
+        body_usage = resp_usage.get_json()
+        self.assertTrue(body_usage.get('success'), body_usage)
+        self.assertEqual(int(body_usage['data'].get('created') or 0), 2, body_usage)
+
+        resp_tokens = self.client.get('/api/stats/tokens?projectId=proj-smoke')
+        self.assertEqual(resp_tokens.status_code, 200, resp_tokens.get_data(as_text=True))
+        token_data = resp_tokens.get_json()['data']
+        totals = token_data['totals']
+        self.assertEqual(int(totals.get('records') or 0), 2)
+        self.assertEqual(int(totals.get('totalTokens') or 0), 220)
+
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)

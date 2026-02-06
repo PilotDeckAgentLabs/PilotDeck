@@ -249,6 +249,161 @@ Response includes per-op status (200/404/409/400) without failing the whole requ
 
 Returns aggregated counts and financial totals.
 
+### GET `/stats/tokens`
+
+Returns token/cost aggregation for dashboards.
+
+Query params (all optional):
+- `projectId`
+- `agentId`
+- `workspace`
+- `source`
+- `since` (ISO timestamp, inclusive)
+- `until` (ISO timestamp, inclusive)
+
+Response data includes:
+- `totals`
+- `byDay`
+- `byProject`
+- `byAgent`
+- `byWorkspace`
+- `byModel`
+
+## AgentOps: Profiles and Capabilities
+
+These endpoints are used by PilotDeckDesktop to manage reusable Agent behavior.
+
+### Agent Profiles
+
+- `GET /agent/profiles?enabled=true|false`
+- `POST /agent/profiles`
+- `GET /agent/profiles/<profileId>`
+- `PATCH /agent/profiles/<profileId>`
+- `DELETE /agent/profiles/<profileId>`
+
+Suggested profile fields:
+
+```json
+{
+  "id": "agent-desktop-planner",
+  "name": "Desktop Planner",
+  "role": "planner",
+  "description": "Plan-first agent for scoped implementation",
+  "styleTags": ["cautious", "explainable"],
+  "skills": ["pilotdeck-skill"],
+  "outputMode": "concise",
+  "writebackPolicy": "minimal",
+  "permissions": {"filesystem": "write", "shell": "restricted"},
+  "enabled": true,
+  "meta": {"owner": "team-a"}
+}
+```
+
+### Agent Capabilities
+
+- `GET /agent/capabilities?enabled=true|false`
+- `POST /agent/capabilities`
+- `GET /agent/capabilities/<capabilityId>`
+- `PATCH /agent/capabilities/<capabilityId>`
+- `DELETE /agent/capabilities/<capabilityId>`
+
+Suggested capability fields:
+
+```json
+{
+  "id": "cap-default-delivery",
+  "name": "Default Delivery",
+  "description": "Balanced delivery with auditable writeback",
+  "promptPack": "Follow PilotDeck protocol and provide evidence.",
+  "skillPack": ["pilotdeck-skill"],
+  "constraints": ["No destructive git commands"],
+  "enabled": true,
+  "meta": {"version": "1.0.0"}
+}
+```
+
+## Token Usage Ingest (for `opencode-pilotdeck`)
+
+Use these endpoints for token/cost reporting from plugin or desktop clients.
+
+### POST `/agent/usage`
+
+Supports single record or batch (`records` array).
+
+Single-record body example:
+
+```json
+{
+  "id": "usage-ses-abc123-001",
+  "ts": "2026-02-06T10:00:00+08:00",
+  "projectId": "proj-aaa",
+  "runId": "run-1234",
+  "agentId": "opencode/sisyphus",
+  "workspace": "E:/work/PilotDeck",
+  "sessionId": "ses-abc123",
+  "source": "opencode-plugin",
+  "model": "openai/gpt-5.3-codex",
+  "promptTokens": 1200,
+  "completionTokens": 560,
+  "totalTokens": 1760,
+  "cost": 0.42,
+  "data": {
+    "provider": "openai",
+    "trigger": "session.idle"
+  }
+}
+```
+
+Batch body example:
+
+```json
+{
+  "records": [
+    {
+      "id": "usage-001",
+      "projectId": "proj-aaa",
+      "agentId": "opencode/sisyphus",
+      "totalTokens": 100,
+      "promptTokens": 70,
+      "completionTokens": 30,
+      "cost": 0.02
+    },
+    {
+      "id": "usage-002",
+      "projectId": "proj-aaa",
+      "agentId": "opencode/sisyphus",
+      "totalTokens": 80,
+      "promptTokens": 55,
+      "completionTokens": 25,
+      "cost": 0.016
+    }
+  ]
+}
+```
+
+Idempotency guidance:
+- Keep `id` stable per usage item (for example `usage-<sessionId>-<sequence>`).
+- Re-sending the same `id` is safe and will not duplicate rows.
+
+### GET `/agent/usage`
+
+Query params (optional):
+- `projectId`
+- `agentId`
+- `workspace`
+- `source`
+- `since`
+- `until`
+- `limit` (default 200, max 5000)
+
+## Recommended Reporting Flow (`opencode-pilotdeck`)
+
+1) Create run with `POST /agent/runs` at task/session start.
+2) Append key timeline events with `POST /agent/events`.
+3) Write semantic project changes using `POST /agent/actions` (or `PATCH /projects/<id>` + event).
+4) Report usage with `POST /agent/usage` on `session.idle` / run end.
+5) Finalize run by `PATCH /agent/runs/<runId>` with `status`, `summary`, `finishedAt`.
+
 ## Agent Timeline (Events)
 
 Events are append-only and stored in SQLite (`data/pm.db`).

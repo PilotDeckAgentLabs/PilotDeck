@@ -20,6 +20,11 @@
   - runs：一次 Agent 工作会话/工作单元的容器（用于聚合、归档、写总结与最终状态）
   - events：append-only 的项目时间线（审计记录：发生了什么/为什么）
   - actions：语义化动作入口（可选更新项目 + 自动写入 event + 内置幂等）
+  - profiles：Agent 档案（风格、技能、写回策略）管理
+  - capabilities：能力包（PromptPack + SkillPack）管理
+  - usage：OpenCode 插件/客户端上报 token 使用与成本
+- Token 统计：
+  - `GET /api/stats/tokens` 按项目/Agent/workspace/model 聚合 token 与 cost
 - 备份/恢复（最简单可理解的方式）：
   - 导出备份：浏览器下载 SQLite 快照文件
   - 从备份恢复：上传快照文件覆盖当前数据库
@@ -50,6 +55,26 @@
 2) 只需要常见动作 + 想要自动留痕与幂等：用 `POST /api/agent/actions`。
 
 完整说明（面向人类与 LLM 客户端）：`docs/AGENT_API.md` / `docs/AGENT_API.zh-CN.md`
+
+## 与 PilotDeckDesktop / opencode-pilotdeck 的集成
+
+本仓库仅包含 PilotDeck Server + Web。以下能力用于给 `PilotDeckDesktop` 与 `opencode-pilotdeck` 进行对接：
+
+- 运行记录上报：
+  - `POST /api/agent/runs`
+  - `PATCH /api/agent/runs/<runId>`
+  - `POST /api/agent/events`
+- Agent 信息管理：
+  - `GET/POST /api/agent/profiles`
+  - `GET/PATCH/DELETE /api/agent/profiles/<profileId>`
+  - `GET/POST /api/agent/capabilities`
+  - `GET/PATCH/DELETE /api/agent/capabilities/<capabilityId>`
+- Token 使用上报与查询：
+  - `POST /api/agent/usage`（支持批量 records）
+  - `GET /api/agent/usage`
+  - `GET /api/stats/tokens`（Web 仪表盘聚合）
+
+建议 `opencode-pilotdeck` 在 `session.idle` 或 run 结束时上报 usage，避免过度碎片化写入。
 
 ## 快速开始（本地）
 

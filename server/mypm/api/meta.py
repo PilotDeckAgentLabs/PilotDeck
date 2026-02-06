@@ -51,6 +51,9 @@ def api_meta():
                     "agentRuns": True,
                     "agentEvents": True,
                     "agentActions": True,
+                    "agentProfiles": True,
+                    "agentCapabilities": True,
+                    "tokenUsage": True,
                     "projectsBatch": True,
                     "projectsPatch": True,
                 }

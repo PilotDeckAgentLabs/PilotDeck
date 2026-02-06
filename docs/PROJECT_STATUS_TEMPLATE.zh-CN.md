@@ -32,6 +32,7 @@ project:
   owner: "team-or-person"
 
 pilotdeck:
+  name: "PilotDeck"
   base_url: "http://localhost:8689/api"
   project_id: "proj-aaa"
   agent_id: "opencode/sisyphus"
@@ -93,6 +94,8 @@ sync_state:
 
 ## 字段说明与映射
 
+- `pilotdeck.name`（可选）→ `projects.name`（PilotDeck 中展示的统一项目名）
+- 若未配置 `pilotdeck.name`，回退使用 `project.name` → `projects.name`
 - `status.lifecycle` → `projects.status`
 - `status.priority` → `projects.priority`
 - `status.progress` → `projects.progress`
@@ -104,4 +107,5 @@ sync_state:
 
 - 状态文件是 Agent 的“本地真实源”。
 - PilotDeck 是“协作视角的可审计视图”。
+- 支持跨仓库映射：不同本地项目（例如 `PilotDeckDesktop`、`opencode-pilotdeck`）可通过相同的 `pilotdeck.project_id` 与 `pilotdeck.name` 归并到同一个 PilotDeck 项目。
 - 遇到 `409`（updatedAt 冲突）时：先拉取最新项目并对比，再更新本地状态文件并重试。

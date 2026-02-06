@@ -6,7 +6,14 @@ from flask import Flask, send_from_directory
 from flask_cors import CORS
 
 from .config import Config
-from .storage import ProjectsStore, AgentRunsStore, AgentEventsStore
+from .storage import (
+    ProjectsStore,
+    AgentRunsStore,
+    AgentEventsStore,
+    AgentProfilesStore,
+    AgentCapabilitiesStore,
+    TokenUsageStore,
+)
 from .services import ProjectService, AgentService, DeployService
 from .domain.auth import require_admin, require_agent
 
@@ -39,6 +46,9 @@ def create_app(config: Config = None) -> Flask:
     projects_store = ProjectsStore(config.DB_FILE)
     agent_runs_store = AgentRunsStore(config.DB_FILE)
     agent_events_store = AgentEventsStore(config.DB_FILE)
+    agent_profiles_store = AgentProfilesStore(config.DB_FILE)
+    agent_capabilities_store = AgentCapabilitiesStore(config.DB_FILE)
+    token_usage_store = TokenUsageStore(config.DB_FILE)
     
     # Initialize services
     project_service = ProjectService(projects_store)
@@ -55,6 +65,9 @@ def create_app(config: Config = None) -> Flask:
     app.extensions['stores']['projects_store'] = projects_store
     app.extensions['stores']['agent_runs_store'] = agent_runs_store
     app.extensions['stores']['agent_events_store'] = agent_events_store
+    app.extensions['stores']['agent_profiles_store'] = agent_profiles_store
+    app.extensions['stores']['agent_capabilities_store'] = agent_capabilities_store
+    app.extensions['stores']['token_usage_store'] = token_usage_store
     
     app.extensions['projects_store'] = projects_store
     app.extensions['project_service'] = project_service
@@ -88,12 +101,13 @@ def create_app(config: Config = None) -> Flask:
         }), 503
     
     # Register blueprints
-    from .api import projects, stats, meta, agent, admin_ops
+    from .api import projects, stats, meta, agent, agent_ops, admin_ops
     
     app.register_blueprint(projects.bp, url_prefix='/api/projects')
     app.register_blueprint(stats.bp, url_prefix='/api/stats')
     app.register_blueprint(meta.bp, url_prefix='/api')
     app.register_blueprint(agent.bp, url_prefix='/api/agent')
+    app.register_blueprint(agent_ops.bp, url_prefix='/api/agent')
     app.register_blueprint(admin_ops.bp, url_prefix='/api/admin')
     
     # Register static routes

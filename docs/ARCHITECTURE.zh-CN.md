@@ -62,6 +62,9 @@ PilotDeck 是可自托管的轻量项目管理与 Agent 协作控制台。
     - `projects`
     - `agent_runs`
     - `agent_events`
+    - `agent_profiles`（Agent 档案）
+    - `agent_capabilities`（PromptPack + SkillPack 能力包）
+    - `token_usage_records`（token/cost 用量上报）
     - `meta`（KV 元信息）
 - `server/mypm/storage/sqlite_store.py`
   - `ProjectsStore`：项目列表/创建/更新/删除/排序/批量更新 + 统计
@@ -92,10 +95,15 @@ PilotDeck 是可自托管的轻量项目管理与 Agent 协作控制台。
   - `/api/projects/batch`：批量 patch（单条失败不影响整体）
 - `server/mypm/api/stats.py`
   - `/api/stats`：聚合统计与财务汇总
+  - `/api/stats/tokens`：token/cost 聚合统计
 - `server/mypm/api/agent.py`
   - `/api/agent/runs`、`/api/agent/runs/<id>`
   - `/api/agent/events`
   - `/api/agent/actions`：语义化动作入口（更新项目 + 写入 trace event）
+- `server/mypm/api/agent_ops.py`
+  - `/api/agent/profiles`：Agent 档案 CRUD
+  - `/api/agent/capabilities`：能力包 CRUD
+  - `/api/agent/usage`：token 用量上报/查询
 - `server/mypm/api/admin_ops.py`
   - `/api/admin/backup`（GET）：导出一致性 SQLite 快照（下载）
   - `/api/admin/restore`（POST）：上传快照并原子替换数据库

@@ -16,6 +16,7 @@ This skill lets an agent:
 ## Inputs and Config
 
 - `statusFile`: status file path (default `pilotdeck/status.yaml`)
+- `pilotdeck.name`: canonical project name in PilotDeck (optional, falls back to `project.name`)
 - `baseUrl`: PilotDeck API base URL (default from `pilotdeck.base_url`)
 - `projectId`: PilotDeck project ID (default from `pilotdeck.project_id`)
 - `agentId`: agent identifier (default from `pilotdeck.agent_id`)
@@ -26,6 +27,8 @@ This skill lets an agent:
 1) **Read status file**, parse and validate required fields.
 2) **Create run**: `POST /api/agent/runs` (include `projectId`/`agentId`/`title`).
 3) **Sync project fields**:
+   - Resolve display name by `pilotdeck.name` -> `project.name` and write it to `projects.name`.
+   - Keep `pilotdeck.project_id` stable across related local repos if they should sync to one shared PilotDeck project.
    - Use `POST /api/agent/actions` for `status/priority/progress/tags`.
    - Use `PATCH /api/projects/<id>` for other custom fields (optional).
 4) **Write event**: `POST /api/agent/events` to capture rationale.
@@ -34,6 +37,7 @@ This skill lets an agent:
 
 ## Mapping Rules
 
+- `pilotdeck.name` (optional) -> `projects.name` (fallback: `project.name`)
 - `status.lifecycle` → action `set_status`
 - `status.priority` → action `set_priority`
 - `status.progress` → action `set_progress`

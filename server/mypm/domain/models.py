@@ -22,6 +22,9 @@ from .enums import (
 Project = Dict[str, Any]
 AgentRun = Dict[str, Any]
 AgentEvent = Dict[str, Any]
+AgentProfile = Dict[str, Any]
+AgentCapability = Dict[str, Any]
+TokenUsageRecord = Dict[str, Any]
 
 
 def normalize_project(p: Any) -> Tuple[Project, bool]:
@@ -325,3 +328,217 @@ def project_get_tags(project: Project) -> List[str]:
         if s and s not in out:
             out.append(s)
     return out
+
+
+def normalize_agent_profile(obj: Any) -> Tuple[AgentProfile, bool]:
+    changed = False
+    now = datetime.now().isoformat()
+
+    if not isinstance(obj, dict):
+        obj = {}
+        changed = True
+    profile: AgentProfile = dict(obj)
+
+    pid = profile.get('id')
+    if not isinstance(pid, str) or not pid.strip():
+        profile['id'] = f"agent-{str(uuid.uuid4())[:8]}"
+        changed = True
+
+    name = str(profile.get('name') or '').strip()
+    if not name:
+        profile['name'] = 'Agent'
+        changed = True
+    elif name != profile.get('name'):
+        profile['name'] = name
+        changed = True
+
+    for k in ('createdAt', 'updatedAt'):
+        v = profile.get(k)
+        if not isinstance(v, str) or not v:
+            profile[k] = now
+            changed = True
+
+    if profile.get('role') is None:
+        profile['role'] = 'general'
+        changed = True
+
+    if profile.get('description') is None:
+        profile['description'] = ''
+        changed = True
+
+    tags = profile.get('styleTags')
+    if tags is None:
+        profile['styleTags'] = []
+        changed = True
+    elif not isinstance(tags, list):
+        profile['styleTags'] = [str(tags)] if str(tags).strip() else []
+        changed = True
+
+    skills = profile.get('skills')
+    if skills is None:
+        profile['skills'] = []
+        changed = True
+    elif not isinstance(skills, list):
+        profile['skills'] = [str(skills)] if str(skills).strip() else []
+        changed = True
+
+    if profile.get('outputMode') is None:
+        profile['outputMode'] = 'concise'
+        changed = True
+
+    if profile.get('writebackPolicy') is None:
+        profile['writebackPolicy'] = 'minimal'
+        changed = True
+
+    permissions = profile.get('permissions')
+    if permissions is None:
+        profile['permissions'] = {}
+        changed = True
+    elif not isinstance(permissions, dict):
+        profile['permissions'] = {}
+        changed = True
+
+    meta = profile.get('meta')
+    if meta is None:
+        profile['meta'] = {}
+        changed = True
+    elif not isinstance(meta, dict):
+        profile['meta'] = {}
+        changed = True
+
+    enabled = profile.get('enabled')
+    enabled_bool = bool(enabled) if isinstance(enabled, bool) else str(enabled).lower() not in ('0', 'false', 'no', 'off', '')
+    if profile.get('enabled') is not enabled_bool:
+        profile['enabled'] = enabled_bool
+        changed = True
+
+    return profile, changed
+
+
+def normalize_agent_capability(obj: Any) -> Tuple[AgentCapability, bool]:
+    changed = False
+    now = datetime.now().isoformat()
+
+    if not isinstance(obj, dict):
+        obj = {}
+        changed = True
+    cap: AgentCapability = dict(obj)
+
+    cid = cap.get('id')
+    if not isinstance(cid, str) or not cid.strip():
+        cap['id'] = f"cap-{str(uuid.uuid4())[:8]}"
+        changed = True
+
+    name = str(cap.get('name') or '').strip()
+    if not name:
+        cap['name'] = 'Capability'
+        changed = True
+    elif name != cap.get('name'):
+        cap['name'] = name
+        changed = True
+
+    for k in ('createdAt', 'updatedAt'):
+        v = cap.get(k)
+        if not isinstance(v, str) or not v:
+            cap[k] = now
+            changed = True
+
+    if cap.get('description') is None:
+        cap['description'] = ''
+        changed = True
+
+    if cap.get('promptPack') is None:
+        cap['promptPack'] = ''
+        changed = True
+
+    skill_pack = cap.get('skillPack')
+    if skill_pack is None:
+        cap['skillPack'] = []
+        changed = True
+    elif not isinstance(skill_pack, list):
+        cap['skillPack'] = [str(skill_pack)] if str(skill_pack).strip() else []
+        changed = True
+
+    constraints = cap.get('constraints')
+    if constraints is None:
+        cap['constraints'] = []
+        changed = True
+    elif not isinstance(constraints, list):
+        cap['constraints'] = [str(constraints)] if str(constraints).strip() else []
+        changed = True
+
+    meta = cap.get('meta')
+    if meta is None:
+        cap['meta'] = {}
+        changed = True
+    elif not isinstance(meta, dict):
+        cap['meta'] = {}
+        changed = True
+
+    enabled = cap.get('enabled')
+    enabled_bool = bool(enabled) if isinstance(enabled, bool) else str(enabled).lower() not in ('0', 'false', 'no', 'off', '')
+    if cap.get('enabled') is not enabled_bool:
+        cap['enabled'] = enabled_bool
+        changed = True
+
+    return cap, changed
+
+
+def normalize_token_usage_record(obj: Any) -> Tuple[TokenUsageRecord, bool]:
+    changed = False
+    now = datetime.now().isoformat()
+
+    if not isinstance(obj, dict):
+        obj = {}
+        changed = True
+    rec: TokenUsageRecord = dict(obj)
+
+    rid = rec.get('id')
+    if not isinstance(rid, str) or not rid.strip():
+        rec['id'] = f"usage-{str(uuid.uuid4())[:8]}"
+        changed = True
+
+    ts = rec.get('ts')
+    if not isinstance(ts, str) or not ts:
+        rec['ts'] = now
+        changed = True
+
+    for k in ('projectId', 'runId', 'agentId', 'workspace', 'sessionId', 'source', 'model'):
+        if k not in rec:
+            rec[k] = None
+            changed = True
+
+    if rec.get('source') is None:
+        rec['source'] = 'opencode'
+        changed = True
+
+    for k in ('promptTokens', 'completionTokens', 'totalTokens'):
+        try:
+            val = int(rec.get(k) or 0)
+        except Exception:
+            val = 0
+        if val < 0:
+            val = 0
+        if rec.get(k) != val:
+            rec[k] = val
+            changed = True
+
+    try:
+        cost = float(rec.get('cost') or 0)
+    except Exception:
+        cost = 0.0
+    if cost < 0:
+        cost = 0.0
+    if rec.get('cost') != cost:
+        rec['cost'] = cost
+        changed = True
+
+    data = rec.get('data')
+    if data is None:
+        rec['data'] = {}
+        changed = True
+    elif not isinstance(data, dict):
+        rec['data'] = {'raw': str(data)}
+        changed = True
+
+    return rec, changed

@@ -13,9 +13,12 @@ Maintain a local project status file and sync changes to PilotDeck using runs, a
 
 1) Read the status file (`pilotdeck/status.yaml` or `pilotdeck/status/<project-key>.yaml`).
 2) Validate required fields (`pilotdeck.base_url`, `pilotdeck.project_id`, `pilotdeck.agent_id`, `status.*`).
+   - Optional canonical project name: `pilotdeck.name`.
 3) If missing, generate the status file from `docs/PROJECT_STATUS_TEMPLATE.md` and populate known fields (project name, base URL, project ID).
 4) Create a run via `POST /api/agent/runs` (include `projectId`, `agentId`, `title`).
 5) Sync status fields:
+   - Resolve project display name by priority: `pilotdeck.name` -> `project.name`.
+   - Use resolved display name when writing `projects.name` to PilotDeck so different local repos can map to the same PilotDeck project identity.
    - Use `POST /api/agent/actions` for `status.lifecycle`, `status.priority`, `status.progress`, and `status.tags`.
    - Use `PATCH /api/projects/<id>` for other custom fields as needed.
 6) Write an event via `POST /api/agent/events` with the rationale and `before/after` data.

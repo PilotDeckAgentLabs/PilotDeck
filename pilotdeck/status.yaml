@@ -7,6 +7,7 @@ project:
   owner: "maintainer"
 
 pilotdeck:
+  name: "PilotDeck"
   base_url: "http://182.92.109.59:8689/api"
   project_id: "proj-46e1c1d8"
   agent_id: "opencode/sisyphus"

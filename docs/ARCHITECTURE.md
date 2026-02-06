@@ -62,6 +62,9 @@ PilotDeck is a self-hosted project hub for developer workflows with optional age
     - `projects` (indexed columns + `payload_json`)
     - `agent_runs` (indexed columns + `payload_json`)
     - `agent_events` (indexed columns + `payload_json`)
+    - `agent_profiles` (AgentOps profile cards)
+    - `agent_capabilities` (PromptPack + SkillPack bundles)
+    - `token_usage_records` (token/cost usage ingest)
     - `meta` key/value table
 - `server/mypm/storage/sqlite_store.py`
   - Store classes:
@@ -93,11 +96,16 @@ PilotDeck is a self-hosted project hub for developer workflows with optional age
   - `/api/projects/batch`: batch patch with per-item result statuses
 - `server/mypm/api/stats.py`
   - `/api/stats`: project aggregation stats
+  - `/api/stats/tokens`: token/cost aggregation stats
 - `server/mypm/api/agent.py`
   - `/api/agent/runs`: create/list
   - `/api/agent/runs/<id>`: get/patch
   - `/api/agent/events`: create/list
   - `/api/agent/actions`: semantic actions that update projects + write trace events
+- `server/mypm/api/agent_ops.py`
+  - `/api/agent/profiles`: Agent profile CRUD
+  - `/api/agent/capabilities`: capability bundle CRUD
+  - `/api/agent/usage`: token usage ingest/list
 - `server/mypm/api/admin_ops.py`
   - `/api/admin/backup` (GET): export a consistent SQLite snapshot (download)
   - `/api/admin/restore` (POST): upload snapshot and atomically replace DB

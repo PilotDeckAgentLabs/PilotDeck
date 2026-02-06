@@ -246,6 +246,161 @@ curl -s -X PATCH http://localhost:8689/api/projects/proj-aaa \
 
 返回按状态/优先级/分类的聚合统计与财务汇总。
 
+### GET `/stats/tokens`
+
+返回 token/cost 聚合统计（用于 Web 仪表盘）。
+
+Query 参数（均可选）：
+- `projectId`
+- `agentId`
+- `workspace`
+- `source`
+- `since`（ISO 时间，含边界）
+- `until`（ISO 时间，含边界）
+
+返回 `data` 包含：
+- `totals`
+- `byDay`
+- `byProject`
+- `byAgent`
+- `byWorkspace`
+- `byModel`
+
+## AgentOps：Profiles 与 Capabilities
+
+这些接口用于给 PilotDeckDesktop 管理可复用的 Agent 行为配置。
+
+### Agent Profiles
+
+- `GET /agent/profiles?enabled=true|false`
+- `POST /agent/profiles`
+- `GET /agent/profiles/<profileId>`
+- `PATCH /agent/profiles/<profileId>`
+- `DELETE /agent/profiles/<profileId>`
+
+建议字段示例：
+
+```json
+{
+  "id": "agent-desktop-planner",
+  "name": "Desktop Planner",
+  "role": "planner",
+  "description": "先规划后执行的 Agent",
+  "styleTags": ["cautious", "explainable"],
+  "skills": ["pilotdeck-skill"],
+  "outputMode": "concise",
+  "writebackPolicy": "minimal",
+  "permissions": {"filesystem": "write", "shell": "restricted"},
+  "enabled": true,
+  "meta": {"owner": "team-a"}
+}
+```
+
+### Agent Capabilities
+
+- `GET /agent/capabilities?enabled=true|false`
+- `POST /agent/capabilities`
+- `GET /agent/capabilities/<capabilityId>`
+- `PATCH /agent/capabilities/<capabilityId>`
+- `DELETE /agent/capabilities/<capabilityId>`
+
+建议字段示例：
+
+```json
+{
+  "id": "cap-default-delivery",
+  "name": "Default Delivery",
+  "description": "平衡速度与审计可追踪性",
+  "promptPack": "Follow PilotDeck protocol and provide evidence.",
+  "skillPack": ["pilotdeck-skill"],
+  "constraints": ["No destructive git commands"],
+  "enabled": true,
+  "meta": {"version": "1.0.0"}
+}
+```
+
+## Token 使用上报（供 `opencode-pilotdeck`）
+
+用于插件或客户端上报 token/cost。
+
+### POST `/agent/usage`
+
+支持单条或批量（`records` 数组）。
+
+单条示例：
+
+```json
+{
+  "id": "usage-ses-abc123-001",
+  "ts": "2026-02-06T10:00:00+08:00",
+  "projectId": "proj-aaa",
+  "runId": "run-1234",
+  "agentId": "opencode/sisyphus",
+  "workspace": "E:/work/PilotDeck",
+  "sessionId": "ses-abc123",
+  "source": "opencode-plugin",
+  "model": "openai/gpt-5.3-codex",
+  "promptTokens": 1200,
+  "completionTokens": 560,
+  "totalTokens": 1760,
+  "cost": 0.42,
+  "data": {
+    "provider": "openai",
+    "trigger": "session.idle"
+  }
+}
+```
+
+批量示例：
+
+```json
+{
+  "records": [
+    {
+      "id": "usage-001",
+      "projectId": "proj-aaa",
+      "agentId": "opencode/sisyphus",
+      "totalTokens": 100,
+      "promptTokens": 70,
+      "completionTokens": 30,
+      "cost": 0.02
+    },
+    {
+      "id": "usage-002",
+      "projectId": "proj-aaa",
+      "agentId": "opencode/sisyphus",
+      "totalTokens": 80,
+      "promptTokens": 55,
+      "completionTokens": 25,
+      "cost": 0.016
+    }
+  ]
+}
+```
+
+幂等建议：
+- `id` 对同一 usage 记录保持稳定（例如 `usage-<sessionId>-<seq>`）。
+- 重复上报相同 `id` 不会重复入库。
+
+### GET `/agent/usage`
+
+Query 参数（可选）：
+- `projectId`
+- `agentId`
+- `workspace`
+- `source`
+- `since`
+- `until`
+- `limit`（默认 200，最大 5000）
+
+## 推荐上报流程（`opencode-pilotdeck`）
+
+1) 任务/会话开始：`POST /agent/runs`
+2) 关键节点：`POST /agent/events`
+3) 项目变更：优先 `POST /agent/actions`（或 `PATCH /projects/<id>` + event）
+4) 会话空闲或结束：`POST /agent/usage`
+5) 收尾：`PATCH /agent/runs/<runId>`（写 `status`、`summary`、`finishedAt`）
+
 ## Agent 时间线（Events）
 
 events 是 append-only，存储于 SQLite（`data/pm.db`）。

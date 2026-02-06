@@ -16,6 +16,7 @@
 ## 输入与配置
 
 - `statusFile`: 状态文件路径（默认 `pilotdeck/status.yaml`）
+- `pilotdeck.name`: PilotDeck 中的统一项目名（可选，未配置时回退 `project.name`）
 - `baseUrl`: PilotDeck API base URL（默认来自状态文件 `pilotdeck.base_url`）
 - `projectId`: PilotDeck 项目 ID（默认来自状态文件 `pilotdeck.project_id`）
 - `agentId`: Agent 标识（默认来自状态文件 `pilotdeck.agent_id`）
@@ -26,6 +27,8 @@
 1) **读状态文件**，解析并校验必填字段。
 2) **创建 run**：`POST /api/agent/runs`（包含 `projectId`/`agentId`/`title`）。
 3) **同步项目字段**：
+   - 按 `pilotdeck.name` -> `project.name` 解析展示名，并写入 `projects.name`。
+   - 若多个本地仓库应归并到同一项目，请保持 `pilotdeck.project_id` 一致。
    - 优先用 `POST /api/agent/actions` 更新 `status/priority/progress/tags`。
    - 其他字段（如 `summary.goal`）用 `PATCH /api/projects/<id>` 写入自定义字段。
 4) **写入事件**：`POST /api/agent/events` 记录“为何改变”。
@@ -34,6 +37,7 @@
 
 ## 变更映射规则
 
+- `pilotdeck.name`（可选）→ `projects.name`（回退：`project.name`）
 - `status.lifecycle` → action `set_status`
 - `status.priority` → action `set_priority`
 - `status.progress` → action `set_progress`

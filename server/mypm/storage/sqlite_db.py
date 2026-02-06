@@ -199,3 +199,59 @@ def _v2_add_project_budget_fields(conn: sqlite3.Connection) -> None:
             'UPDATE projects SET budget=?, actual_cost=? WHERE id=?',
             (budget, actual_cost, row['id'])
         )
+
+
+@migration
+def _v3_add_agentops_and_usage(conn: sqlite3.Connection) -> None:
+    conn.executescript(
+        """
+        CREATE TABLE IF NOT EXISTS agent_profiles (
+          id TEXT PRIMARY KEY,
+          name TEXT NOT NULL,
+          role TEXT,
+          enabled INTEGER NOT NULL DEFAULT 1,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          payload_json TEXT NOT NULL
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_agent_profiles_updated_at ON agent_profiles(updated_at);
+        CREATE INDEX IF NOT EXISTS idx_agent_profiles_name ON agent_profiles(name);
+
+        CREATE TABLE IF NOT EXISTS agent_capabilities (
+          id TEXT PRIMARY KEY,
+          name TEXT NOT NULL,
+          enabled INTEGER NOT NULL DEFAULT 1,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          payload_json TEXT NOT NULL
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_agent_capabilities_updated_at ON agent_capabilities(updated_at);
+        CREATE INDEX IF NOT EXISTS idx_agent_capabilities_name ON agent_capabilities(name);
+
+        CREATE TABLE IF NOT EXISTS token_usage_records (
+          id TEXT PRIMARY KEY,
+          ts TEXT NOT NULL,
+          project_id TEXT,
+          run_id TEXT,
+          agent_id TEXT,
+          workspace TEXT,
+          session_id TEXT,
+          source TEXT,
+          model TEXT,
+          prompt_tokens INTEGER NOT NULL DEFAULT 0,
+          completion_tokens INTEGER NOT NULL DEFAULT 0,
+          total_tokens INTEGER NOT NULL DEFAULT 0,
+          cost REAL NOT NULL DEFAULT 0,
+          payload_json TEXT NOT NULL
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_usage_ts ON token_usage_records(ts);
+        CREATE INDEX IF NOT EXISTS idx_usage_project ON token_usage_records(project_id);
+        CREATE INDEX IF NOT EXISTS idx_usage_agent ON token_usage_records(agent_id);
+        CREATE INDEX IF NOT EXISTS idx_usage_workspace ON token_usage_records(workspace);
+        CREATE INDEX IF NOT EXISTS idx_usage_source ON token_usage_records(source);
+        CREATE INDEX IF NOT EXISTS idx_usage_session ON token_usage_records(session_id);
+        """
+    )

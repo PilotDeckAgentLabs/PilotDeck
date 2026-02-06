@@ -12,7 +12,20 @@ import json
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 
-from ..domain.models import normalize_project, normalize_agent_run, normalize_agent_event, Project, AgentRun, AgentEvent
+from ..domain.models import (
+    normalize_project,
+    normalize_agent_run,
+    normalize_agent_event,
+    normalize_agent_profile,
+    normalize_agent_capability,
+    normalize_token_usage_record,
+    Project,
+    AgentRun,
+    AgentEvent,
+    AgentProfile,
+    AgentCapability,
+    TokenUsageRecord,
+)
 from .sqlite_db import connect, migrate
 
 
@@ -716,3 +729,443 @@ class AgentEventsStore:
             return out
         finally:
             conn.close()
+
+
+class AgentProfilesStore:
+    def __init__(self, db_path: str):
+        self.db_path = db_path
+        self._ensure_db()
+
+    def _ensure_db(self) -> None:
+        conn = connect(self.db_path)
+        try:
+            migrate(conn)
+        finally:
+            conn.close()
+
+    def _row_to_profile(self, row) -> AgentProfile:
+        payload = _json_loads(row['payload_json'])
+        if isinstance(payload, dict):
+            payload['id'] = row['id']
+            payload['name'] = row['name']
+            payload['role'] = row['role']
+            payload['enabled'] = bool(row['enabled'])
+            payload['createdAt'] = row['created_at']
+            payload['updatedAt'] = row['updated_at']
+            return payload
+        return {
+            'id': row['id'],
+            'name': row['name'],
+            'role': row['role'],
+            'enabled': bool(row['enabled']),
+            'createdAt': row['created_at'],
+            'updatedAt': row['updated_at'],
+        }
+
+    def list(self, *, enabled: Optional[bool] = None) -> List[AgentProfile]:
+        conn = connect(self.db_path)
+        try:
+            sql = 'SELECT * FROM agent_profiles'
+            args: List[Any] = []
+            if enabled is not None:
+                sql += ' WHERE enabled=?'
+                args.append(1 if enabled else 0)
+            sql += ' ORDER BY updated_at DESC'
+            rows = conn.execute(sql, tuple(args)).fetchall()
+            return [self._row_to_profile(r) for r in rows]
+        finally:
+            conn.close()
+
+    def get(self, profile_id: str) -> Optional[AgentProfile]:
+        conn = connect(self.db_path)
+        try:
+            row = conn.execute('SELECT * FROM agent_profiles WHERE id=?', (profile_id,)).fetchone()
+            return self._row_to_profile(row) if row else None
+        finally:
+            conn.close()
+
+    def create(self, payload: Dict[str, Any]) -> AgentProfile:
+        prof, _ = normalize_agent_profile(payload)
+        conn = connect(self.db_path)
+        try:
+            with conn:
+                row = conn.execute('SELECT * FROM agent_profiles WHERE id=?', (prof['id'],)).fetchone()
+                if row:
+                    return self._row_to_profile(row)
+                conn.execute(
+                    (
+                        'INSERT INTO agent_profiles(id, name, role, enabled, created_at, updated_at, payload_json) '
+                        'VALUES(?, ?, ?, ?, ?, ?, ?)'
+                    ),
+                    (
+                        prof['id'],
+                        str(prof.get('name') or ''),
+                        str(prof.get('role') or ''),
+                        1 if bool(prof.get('enabled', True)) else 0,
+                        str(prof.get('createdAt') or _now()),
+                        str(prof.get('updatedAt') or _now()),
+                        _json_dumps(prof),
+                    ),
+                )
+                _meta_set(conn, 'agent_profiles.lastUpdated', _now())
+                return prof
+        finally:
+            conn.close()
+
+    def patch(self, profile_id: str, patch: Dict[str, Any]) -> AgentProfile:
+        conn = connect(self.db_path)
+        try:
+            with conn:
+                row = conn.execute('SELECT * FROM agent_profiles WHERE id=?', (profile_id,)).fetchone()
+                if not row:
+                    raise KeyError('not found')
+                cur = self._row_to_profile(row)
+                for k, v in (patch or {}).items():
+                    if k in {'id', 'createdAt'}:
+                        continue
+                    cur[k] = v
+                cur['id'] = profile_id
+                cur['updatedAt'] = _now()
+                np, _ = normalize_agent_profile(cur)
+                conn.execute(
+                    (
+                        'UPDATE agent_profiles SET name=?, role=?, enabled=?, updated_at=?, payload_json=? WHERE id=?'
+                    ),
+                    (
+                        str(np.get('name') or ''),
+                        str(np.get('role') or ''),
+                        1 if bool(np.get('enabled', True)) else 0,
+                        str(np.get('updatedAt') or _now()),
+                        _json_dumps(np),
+                        profile_id,
+                    ),
+                )
+                _meta_set(conn, 'agent_profiles.lastUpdated', _now())
+                return np
+        finally:
+            conn.close()
+
+    def delete(self, profile_id: str) -> None:
+        conn = connect(self.db_path)
+        try:
+            with conn:
+                cur = conn.execute('DELETE FROM agent_profiles WHERE id=?', (profile_id,))
+                if cur.rowcount == 0:
+                    raise KeyError('not found')
+                _meta_set(conn, 'agent_profiles.lastUpdated', _now())
+        finally:
+            conn.close()
+
+
+class AgentCapabilitiesStore:
+    def __init__(self, db_path: str):
+        self.db_path = db_path
+        self._ensure_db()
+
+    def _ensure_db(self) -> None:
+        conn = connect(self.db_path)
+        try:
+            migrate(conn)
+        finally:
+            conn.close()
+
+    def _row_to_capability(self, row) -> AgentCapability:
+        payload = _json_loads(row['payload_json'])
+        if isinstance(payload, dict):
+            payload['id'] = row['id']
+            payload['name'] = row['name']
+            payload['enabled'] = bool(row['enabled'])
+            payload['createdAt'] = row['created_at']
+            payload['updatedAt'] = row['updated_at']
+            return payload
+        return {
+            'id': row['id'],
+            'name': row['name'],
+            'enabled': bool(row['enabled']),
+            'createdAt': row['created_at'],
+            'updatedAt': row['updated_at'],
+        }
+
+    def list(self, *, enabled: Optional[bool] = None) -> List[AgentCapability]:
+        conn = connect(self.db_path)
+        try:
+            sql = 'SELECT * FROM agent_capabilities'
+            args: List[Any] = []
+            if enabled is not None:
+                sql += ' WHERE enabled=?'
+                args.append(1 if enabled else 0)
+            sql += ' ORDER BY updated_at DESC'
+            rows = conn.execute(sql, tuple(args)).fetchall()
+            return [self._row_to_capability(r) for r in rows]
+        finally:
+            conn.close()
+
+    def get(self, capability_id: str) -> Optional[AgentCapability]:
+        conn = connect(self.db_path)
+        try:
+            row = conn.execute('SELECT * FROM agent_capabilities WHERE id=?', (capability_id,)).fetchone()
+            return self._row_to_capability(row) if row else None
+        finally:
+            conn.close()
+
+    def create(self, payload: Dict[str, Any]) -> AgentCapability:
+        cap, _ = normalize_agent_capability(payload)
+        conn = connect(self.db_path)
+        try:
+            with conn:
+                row = conn.execute('SELECT * FROM agent_capabilities WHERE id=?', (cap['id'],)).fetchone()
+                if row:
+                    return self._row_to_capability(row)
+                conn.execute(
+                    (
+                        'INSERT INTO agent_capabilities(id, name, enabled, created_at, updated_at, payload_json) '
+                        'VALUES(?, ?, ?, ?, ?, ?)'
+                    ),
+                    (
+                        cap['id'],
+                        str(cap.get('name') or ''),
+                        1 if bool(cap.get('enabled', True)) else 0,
+                        str(cap.get('createdAt') or _now()),
+                        str(cap.get('updatedAt') or _now()),
+                        _json_dumps(cap),
+                    ),
+                )
+                _meta_set(conn, 'agent_capabilities.lastUpdated', _now())
+                return cap
+        finally:
+            conn.close()
+
+    def patch(self, capability_id: str, patch: Dict[str, Any]) -> AgentCapability:
+        conn = connect(self.db_path)
+        try:
+            with conn:
+                row = conn.execute('SELECT * FROM agent_capabilities WHERE id=?', (capability_id,)).fetchone()
+                if not row:
+                    raise KeyError('not found')
+                cur = self._row_to_capability(row)
+                for k, v in (patch or {}).items():
+                    if k in {'id', 'createdAt'}:
+                        continue
+                    cur[k] = v
+                cur['id'] = capability_id
+                cur['updatedAt'] = _now()
+                nc, _ = normalize_agent_capability(cur)
+                conn.execute(
+                    'UPDATE agent_capabilities SET name=?, enabled=?, updated_at=?, payload_json=? WHERE id=?',
+                    (
+                        str(nc.get('name') or ''),
+                        1 if bool(nc.get('enabled', True)) else 0,
+                        str(nc.get('updatedAt') or _now()),
+                        _json_dumps(nc),
+                        capability_id,
+                    ),
+                )
+                _meta_set(conn, 'agent_capabilities.lastUpdated', _now())
+                return nc
+        finally:
+            conn.close()
+
+    def delete(self, capability_id: str) -> None:
+        conn = connect(self.db_path)
+        try:
+            with conn:
+                cur = conn.execute('DELETE FROM agent_capabilities WHERE id=?', (capability_id,))
+                if cur.rowcount == 0:
+                    raise KeyError('not found')
+                _meta_set(conn, 'agent_capabilities.lastUpdated', _now())
+        finally:
+            conn.close()
+
+
+class TokenUsageStore:
+    def __init__(self, db_path: str):
+        self.db_path = db_path
+        self._ensure_db()
+
+    def _ensure_db(self) -> None:
+        conn = connect(self.db_path)
+        try:
+            migrate(conn)
+        finally:
+            conn.close()
+
+    def _row_to_usage(self, row) -> TokenUsageRecord:
+        payload = _json_loads(row['payload_json'])
+        if isinstance(payload, dict):
+            payload['id'] = row['id']
+            payload['ts'] = row['ts']
+            payload['projectId'] = row['project_id']
+            payload['runId'] = row['run_id']
+            payload['agentId'] = row['agent_id']
+            payload['workspace'] = row['workspace']
+            payload['sessionId'] = row['session_id']
+            payload['source'] = row['source']
+            payload['model'] = row['model']
+            payload['promptTokens'] = int(row['prompt_tokens'] or 0)
+            payload['completionTokens'] = int(row['completion_tokens'] or 0)
+            payload['totalTokens'] = int(row['total_tokens'] or 0)
+            payload['cost'] = float(row['cost'] or 0)
+            return payload
+        return {
+            'id': row['id'],
+            'ts': row['ts'],
+            'projectId': row['project_id'],
+            'runId': row['run_id'],
+            'agentId': row['agent_id'],
+            'workspace': row['workspace'],
+            'sessionId': row['session_id'],
+            'source': row['source'],
+            'model': row['model'],
+            'promptTokens': int(row['prompt_tokens'] or 0),
+            'completionTokens': int(row['completion_tokens'] or 0),
+            'totalTokens': int(row['total_tokens'] or 0),
+            'cost': float(row['cost'] or 0),
+            'data': {},
+        }
+
+    def ingest(self, payload: Dict[str, Any]) -> Tuple[TokenUsageRecord, bool]:
+        rec, _ = normalize_token_usage_record(payload)
+        conn = connect(self.db_path)
+        try:
+            with conn:
+                existing = conn.execute('SELECT * FROM token_usage_records WHERE id=?', (rec['id'],)).fetchone()
+                if existing:
+                    return self._row_to_usage(existing), False
+                conn.execute(
+                    (
+                        'INSERT INTO token_usage_records('
+                        'id, ts, project_id, run_id, agent_id, workspace, session_id, source, model, '
+                        'prompt_tokens, completion_tokens, total_tokens, cost, payload_json'
+                        ') VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+                    ),
+                    (
+                        rec['id'],
+                        rec.get('ts'),
+                        rec.get('projectId'),
+                        rec.get('runId'),
+                        rec.get('agentId'),
+                        rec.get('workspace'),
+                        rec.get('sessionId'),
+                        rec.get('source'),
+                        rec.get('model'),
+                        int(rec.get('promptTokens') or 0),
+                        int(rec.get('completionTokens') or 0),
+                        int(rec.get('totalTokens') or 0),
+                        float(rec.get('cost') or 0),
+                        _json_dumps(rec),
+                    ),
+                )
+                _meta_set(conn, 'token_usage.lastUpdated', _now())
+                return rec, True
+        finally:
+            conn.close()
+
+    def list(
+        self,
+        *,
+        project_id: Optional[str] = None,
+        agent_id: Optional[str] = None,
+        workspace: Optional[str] = None,
+        source: Optional[str] = None,
+        since: Optional[str] = None,
+        until: Optional[str] = None,
+        limit: int = 200,
+    ) -> List[TokenUsageRecord]:
+        conn = connect(self.db_path)
+        try:
+            where = []
+            args: List[Any] = []
+            if project_id:
+                where.append('project_id=?')
+                args.append(project_id)
+            if agent_id:
+                where.append('agent_id=?')
+                args.append(agent_id)
+            if workspace:
+                where.append('workspace=?')
+                args.append(workspace)
+            if source:
+                where.append('source=?')
+                args.append(source)
+            if since:
+                where.append('ts>=?')
+                args.append(since)
+            if until:
+                where.append('ts<=?')
+                args.append(until)
+
+            sql = 'SELECT * FROM token_usage_records'
+            if where:
+                sql += ' WHERE ' + ' AND '.join(where)
+            sql += ' ORDER BY ts DESC LIMIT ?'
+            args.append(max(1, min(5000, int(limit))))
+
+            rows = conn.execute(sql, tuple(args)).fetchall()
+            return [self._row_to_usage(r) for r in rows]
+        finally:
+            conn.close()
+
+    def aggregate(self, **filters) -> Dict[str, Any]:
+        items = self.list(**filters, limit=5000)
+
+        def _blank() -> Dict[str, Any]:
+            return {
+                'records': 0,
+                'promptTokens': 0,
+                'completionTokens': 0,
+                'totalTokens': 0,
+                'cost': 0.0,
+            }
+
+        out = {
+            'totals': _blank(),
+            'byDay': {},
+            'byProject': {},
+            'byAgent': {},
+            'byWorkspace': {},
+            'byModel': {},
+        }
+
+        def _acc(bucket: Dict[str, Any], rec: TokenUsageRecord) -> None:
+            bucket['records'] += 1
+            bucket['promptTokens'] += int(rec.get('promptTokens') or 0)
+            bucket['completionTokens'] += int(rec.get('completionTokens') or 0)
+            bucket['totalTokens'] += int(rec.get('totalTokens') or 0)
+            bucket['cost'] += float(rec.get('cost') or 0)
+
+        for rec in items:
+            _acc(out['totals'], rec)
+            day = str(rec.get('ts') or '')[:10] or 'unknown'
+            pid = str(rec.get('projectId') or 'unassigned')
+            aid = str(rec.get('agentId') or 'unassigned')
+            wsp = str(rec.get('workspace') or 'unknown')
+            mdl = str(rec.get('model') or 'unknown')
+
+            for group_name, key in (
+                ('byDay', day),
+                ('byProject', pid),
+                ('byAgent', aid),
+                ('byWorkspace', wsp),
+                ('byModel', mdl),
+            ):
+                if key not in out[group_name]:
+                    out[group_name][key] = _blank()
+                _acc(out[group_name][key], rec)
+
+        def _to_list(d: Dict[str, Dict[str, Any]], key_name: str) -> List[Dict[str, Any]]:
+            rows = []
+            for k, v in d.items():
+                row = {key_name: k}
+                row.update(v)
+                rows.append(row)
+            rows.sort(key=lambda x: x.get('totalTokens', 0), reverse=True)
+            return rows
+
+        return {
+            'totals': out['totals'],
+            'byDay': sorted(_to_list(out['byDay'], 'day'), key=lambda x: x['day']),
+            'byProject': _to_list(out['byProject'], 'projectId'),
+            'byAgent': _to_list(out['byAgent'], 'agentId'),
+            'byWorkspace': _to_list(out['byWorkspace'], 'workspace'),
+            'byModel': _to_list(out['byModel'], 'model'),
+        }

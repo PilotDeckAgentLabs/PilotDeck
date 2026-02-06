@@ -32,6 +32,7 @@ project:
   owner: "team-or-person"
 
 pilotdeck:
+  name: "PilotDeck"
   base_url: "http://localhost:8689/api"
   project_id: "proj-aaa"
   agent_id: "opencode/sisyphus"
@@ -93,6 +94,8 @@ sync_state:
 
 ## Field Mapping
 
+- `pilotdeck.name` (optional) -> `projects.name` (canonical PilotDeck display name)
+- If `pilotdeck.name` is missing, fallback to `project.name` -> `projects.name`
 - `status.lifecycle` → `projects.status`
 - `status.priority` → `projects.priority`
 - `status.progress` → `projects.progress`
@@ -104,4 +107,5 @@ sync_state:
 
 - Status file is the agent’s local source of truth.
 - PilotDeck is the shared, auditable view.
+- Cross-repo mapping is supported: different local projects (for example `PilotDeckDesktop`, `opencode-pilotdeck`) can point to the same PilotDeck project by using the same `pilotdeck.project_id` and `pilotdeck.name`.
 - On `409` conflict: fetch latest project, reconcile, update status file, then retry.
