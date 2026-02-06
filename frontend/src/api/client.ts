@@ -13,6 +13,9 @@ import type {
   OpsLogResponse,
   DeployStartResponse,
   DeployStatusResponse,
+  User,
+  LoginRequest,
+  AuthResponse,
 } from './types'
 
 const API_BASE_URL = '/api'
@@ -40,6 +43,7 @@ async function apiFetch<T = any>(
   
   try {
     const res = await fetch(url, {
+      credentials: 'include',  // Include cookies for session
       headers: {
         'Content-Type': 'application/json',
         ...(options.headers || {}),
@@ -313,3 +317,38 @@ export async function opsGetDeployStatus(token: string): Promise<DeployStatusRes
   // Backend route: GET /api/admin/deploy/status
   return opsFetch<DeployStatusResponse>('/admin/deploy/status', token)
 }
+
+// ===== Auth API =====
+
+export async function login(credentials: LoginRequest): Promise<User> {
+  const response = await apiFetch<AuthResponse>('/auth/login', {
+    method: 'POST',
+    body: JSON.stringify(credentials),
+  })
+  
+  if (!response.success || !response.data?.user) {
+    throw new ApiError(response.error || 'Login failed')
+  }
+  
+  return response.data.user
+}
+
+export async function checkAuth(): Promise<User | null> {
+  try {
+    const response = await apiFetch<AuthResponse>('/auth/me')
+    if (response.success && response.data?.user) {
+      return response.data.user
+    }
+    return null
+  } catch (error) {
+    // Not authenticated
+    return null
+  }
+}
+
+export async function logout(): Promise<void> {
+  await apiFetch('/auth/logout', {
+    method: 'POST',
+  })
+}
+

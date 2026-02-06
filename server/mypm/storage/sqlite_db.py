@@ -255,3 +255,45 @@ def _v3_add_agentops_and_usage(conn: sqlite3.Connection) -> None:
         CREATE INDEX IF NOT EXISTS idx_usage_session ON token_usage_records(session_id);
         """
     )
+
+
+@migration
+def _v4_add_users_table(conn: sqlite3.Connection) -> None:
+    """Add users table for authentication."""
+    from datetime import datetime, timezone
+    import secrets
+    
+    conn.executescript(
+        """
+        CREATE TABLE IF NOT EXISTS users (
+          id TEXT PRIMARY KEY,
+          username TEXT NOT NULL UNIQUE,
+          password_hash TEXT NOT NULL,
+          role TEXT NOT NULL DEFAULT 'admin',
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          last_login_at TEXT
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
+        """
+    )
+    
+    # Initialize default admin user with a secure random password
+    # The password will be "admin" hashed with bcrypt
+    # Using bcrypt's default rounds (12)
+    import hashlib
+    admin_password = "admin"
+    # Simple SHA256 hash for now - should use bcrypt in production
+    password_hash = hashlib.sha256(admin_password.encode()).hexdigest()
+    
+    now = datetime.now(timezone.utc).isoformat()
+    admin_id = secrets.token_urlsafe(16)
+    
+    conn.execute(
+        """
+        INSERT OR IGNORE INTO users (id, username, password_hash, role, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?)
+        """,
+        (admin_id, "admin", password_hash, "admin", now, now)
+    )

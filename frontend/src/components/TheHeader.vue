@@ -44,6 +44,21 @@
           运维
         </button>
         
+        <div class="divider"></div>
+        
+        <div class="user-info">
+          <span class="username">{{ authStore.user?.username }}</span>
+        </div>
+        
+        <button class="btn btn-ghost" @click="handleLogout" title="退出登录">
+          <svg class="btn-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+            <polyline points="16 17 21 12 16 7"></polyline>
+            <line x1="21" y1="12" x2="9" y2="12"></line>
+          </svg>
+          退出
+        </button>
+        
         <button class="btn btn-primary" @click="$emit('add-project')">
           <svg class="btn-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <line x1="12" y1="5" x2="12" y2="19"></line>
@@ -57,8 +72,15 @@
 </template>
 
 <script setup lang="ts">
+import { useRouter } from 'vue-router'
 import { useTheme } from '../composables/useTheme'
+import { useAuthStore } from '../stores/auth'
+import { useToast } from '../composables/useToast'
+import { logout } from '../api/client'
 
+const router = useRouter()
+const authStore = useAuthStore()
+const toast = useToast()
 const { currentTheme, toggleTheme } = useTheme()
 
 defineEmits<{
@@ -66,6 +88,17 @@ defineEmits<{
   'show-ops': []
   'add-project': []
 }>()
+
+async function handleLogout() {
+  try {
+    await logout()
+    authStore.clearUser()
+    toast.success('已退出登录')
+    router.push('/login')
+  } catch (error: any) {
+    toast.error(error.message || '退出失败')
+  }
+}
 </script>
 
 <style scoped>
@@ -197,6 +230,18 @@ defineEmits<{
 .btn-icon-svg {
   width: 16px;
   height: 16px;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  padding: 4px 12px;
+}
+
+.username {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
 }
 
 @media (max-width: 860px) {

@@ -5,6 +5,7 @@ from flask import Blueprint, jsonify, request, current_app
 from typing import Dict
 
 from ..domain.errors import ProjectNotFoundError, ValidationError, ConcurrencyConflictError
+from ..domain.auth import require_login
 
 
 bp = Blueprint('projects', __name__)
@@ -16,6 +17,7 @@ def _get_project_service():
 
 
 @bp.route('', methods=['GET'])
+@require_login
 def list_projects():
     """Get all projects (supports filtering)."""
     try:
@@ -43,6 +45,7 @@ def list_projects():
 
 
 @bp.route('/<project_id>', methods=['GET'])
+@require_login
 def get_project(project_id: str):
     """Get single project by ID."""
     try:
@@ -60,6 +63,7 @@ def get_project(project_id: str):
 
 
 @bp.route('', methods=['POST'])
+@require_login
 def create_project():
     """Create new project."""
     try:
@@ -80,6 +84,7 @@ def create_project():
 
 
 @bp.route('/<project_id>', methods=['PUT'])
+@require_login
 def update_project(project_id: str):
     """Update project (full PUT semantics)."""
     try:
@@ -100,6 +105,7 @@ def update_project(project_id: str):
 
 
 @bp.route('/<project_id>', methods=['PATCH'])
+@require_login
 def patch_project(project_id: str):
     """Partial update for agents (PATCH semantics)."""
     try:
@@ -131,6 +137,7 @@ def patch_project(project_id: str):
 
 
 @bp.route('/<project_id>', methods=['DELETE'])
+@require_login
 def delete_project(project_id: str):
     """Delete project."""
     try:
@@ -148,6 +155,7 @@ def delete_project(project_id: str):
 
 
 @bp.route('/reorder', methods=['POST'])
+@require_login
 def reorder_projects():
     """Reorder projects by ID list (for drag-drop persistence)."""
     try:
@@ -176,6 +184,7 @@ def reorder_projects():
 
 
 @bp.route('/batch', methods=['POST'])
+@require_login
 def batch_update_projects():
     """Batch operations for agents.
     

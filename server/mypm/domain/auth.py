@@ -3,9 +3,11 @@
 
 import os
 import hmac
+import secrets
 from typing import Tuple, Optional, Any
+from functools import wraps
 
-from flask import request, jsonify
+from flask import request, jsonify, session
 
 
 def require_admin() -> Tuple[bool, Optional[Any]]:
@@ -55,3 +57,21 @@ def require_agent() -> Tuple[bool, Optional[Any]]:
             "error": "Unauthorized"
         }), 401)
     return True, None
+
+
+def require_login(f):
+    """Decorator to require login for a route."""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session:
+            return jsonify({
+                'success': False,
+                'error': '未登录'
+            }), 401
+        return f(*args, **kwargs)
+    return decorated_function
+
+
+def generate_secret_key() -> str:
+    """Generate a secure secret key for Flask session."""
+    return secrets.token_hex(32)

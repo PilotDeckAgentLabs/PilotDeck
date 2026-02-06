@@ -181,3 +181,25 @@ export interface ProjectFormData {
   workspace?: string
   tags?: string[]
 }
+
+// ===== Auth Types =====
+
+export interface User {
+  id: string
+  username: string
+  role: string
+}
+
+export interface LoginRequest {
+  username: string
+  password: string
+}
+
+export interface AuthResponse {
+  success: boolean
+  data?: {
+    user: User
+  }
+  error?: string
+}
+

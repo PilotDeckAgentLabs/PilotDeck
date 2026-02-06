@@ -15,7 +15,7 @@ from .storage import (
     TokenUsageStore,
 )
 from .services import ProjectService, AgentService, DeployService
-from .domain.auth import require_admin, require_agent
+from .domain.auth import require_admin, require_agent, generate_secret_key
 
 
 def create_app(config: Config = None) -> Flask:
@@ -36,11 +36,21 @@ def create_app(config: Config = None) -> Flask:
         static_folder=config.STATIC_FOLDER,
         static_url_path=config.STATIC_URL_PATH
     )
-    CORS(app)  # Allow CORS
+    
+    # Configure session
+    app.config['SECRET_KEY'] = os.environ.get('PM_SECRET_KEY') or generate_secret_key()
+    app.config['SESSION_COOKIE_NAME'] = 'pilotdeck_session'
+    app.config['SESSION_COOKIE_HTTPONLY'] = True
+    app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+    app.config['SESSION_COOKIE_SECURE'] = False  # Set to True in production with HTTPS
+    app.config['PERMANENT_SESSION_LIFETIME'] = 86400  # 24 hours
+    
+    CORS(app, supports_credentials=True)  # Allow CORS with credentials
     
     # Store config in app
     app.config.from_object(config)
     app.config['ROOT_DIR'] = config.ROOT_DIR
+    app.config['DB_FILE'] = config.DB_FILE
     
     # Initialize storage layer (SQLite)
     projects_store = ProjectsStore(config.DB_FILE)
@@ -101,8 +111,9 @@ def create_app(config: Config = None) -> Flask:
         }), 503
     
     # Register blueprints
-    from .api import projects, stats, meta, agent, agent_ops, admin_ops
+    from .api import projects, stats, meta, agent, agent_ops, admin_ops, auth
     
+    app.register_blueprint(auth.bp, url_prefix='/api/auth')
     app.register_blueprint(projects.bp, url_prefix='/api/projects')
     app.register_blueprint(stats.bp, url_prefix='/api/stats')
     app.register_blueprint(meta.bp, url_prefix='/api')
