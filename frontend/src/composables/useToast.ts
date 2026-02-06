@@ -42,9 +42,29 @@ export function useToast() {
     }
   }
 
+  function success(message: string, duration = 2400) {
+    showToast(message, 'success', duration)
+  }
+
+  function error(message: string, duration = 2400) {
+    showToast(message, 'error', duration)
+  }
+
+  function info(message: string, duration = 2400) {
+    showToast(message, 'info', duration)
+  }
+
+  function warning(message: string, duration = 2400) {
+    showToast(message, 'warning', duration)
+  }
+
   return {
     toastState,
     showToast,
     hideToast,
+    success,
+    error,
+    info,
+    warning,
   }
 }
