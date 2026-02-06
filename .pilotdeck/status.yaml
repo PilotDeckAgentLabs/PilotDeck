@@ -18,7 +18,7 @@ status:
   priority: "medium"
   progress: 72
   category: "platform"
-  tags: ["pilotdeck", "agent", "project-management"]
+  tags: ["pilotdeck", "agent", "project-management", "desktop-integration", "agentops"]
 
 summary:
   goal: "Provide a self-hosted project management and agent collaboration console"
@@ -72,8 +72,12 @@ activity_log:
     author: "opencode/sisyphus"
     summary: "Fixed progress column and project detail fields"
     details: "Aligned table borders, normalized budget/actual cost, and updated progress sync"
+  - ts: "2026-02-06T19:00:20+08:00"
+    author: "opencode/sisyphus"
+    summary: "Synced session execution record via pilotdeck-skill workflow"
+    details: "Created run run-60fdc6fa, wrote actions/events, patched project summary, and finalized run after server/docs updates"
 
 sync_state:
-  last_sync_at: "2026-02-05T21:07:45+08:00"
+  last_sync_at: "2026-02-06T19:00:20+08:00"
   last_sync_result: "success"
-  last_project_updated_at: "2026-02-05T21:07:28.153805"
+  last_project_updated_at: "2026-02-06T19:00:33.458526"

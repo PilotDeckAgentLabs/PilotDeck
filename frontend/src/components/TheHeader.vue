@@ -97,20 +97,20 @@ defineEmits<{
 }
 
 .logo-icon-wrap {
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  background: var(--logo-bg);
-  border: 1px solid var(--logo-border);
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  background: transparent;
+  border: none;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: var(--shadow-sm);
+  overflow: hidden;
 }
 
 .logo-icon {
-  width: 22px;
-  height: 22px;
+  width: 44px;
+  height: 44px;
   object-fit: contain;
 }
 
