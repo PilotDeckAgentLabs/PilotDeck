@@ -2,7 +2,13 @@
   <header class="app-header">
     <div class="container">
       <div class="logo-wrapper">
-        <div class="logo-icon">PD</div>
+        <div class="logo-icon-wrap">
+          <img
+            class="logo-icon"
+            :src="currentTheme === 'dark' ? '/res/icon-white.png' : '/res/icon-black.png'"
+            alt="PilotDeck logo"
+          />
+        </div>
         <h1 class="logo">PilotDeck</h1>
       </div>
       
@@ -87,29 +93,33 @@ defineEmits<{
 .logo-wrapper {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
 }
 
-.logo-icon {
-  width: 32px;
-  height: 32px;
-  background: linear-gradient(135deg, var(--primary-color), var(--primary-600));
-  border-radius: 8px;
-  color: white;
+.logo-icon-wrap {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--logo-bg);
+  border: 1px solid var(--logo-border);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: 700;
-  font-size: 14px;
-  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
+  box-shadow: var(--shadow-sm);
+}
+
+.logo-icon {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
 }
 
 .logo {
   margin: 0;
-  font-size: 20px;
-  font-weight: 700;
+  font-size: 19px;
+  font-weight: 800;
   color: var(--text-primary);
-  letter-spacing: -0.5px;
+  letter-spacing: -0.2px;
 }
 
 .header-actions {
@@ -175,17 +185,35 @@ defineEmits<{
 .btn-primary {
   background: var(--primary-color);
   color: white;
-  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
+  box-shadow: var(--shadow-sm);
 }
 
 .btn-primary:hover {
   background: var(--primary-hover);
-  box-shadow: 0 4px 8px rgba(59, 130, 246, 0.3);
+  box-shadow: var(--shadow-md);
   transform: translateY(-1px);
 }
 
 .btn-icon-svg {
   width: 16px;
   height: 16px;
+}
+
+@media (max-width: 860px) {
+  .container {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .header-actions {
+    width: 100%;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .divider {
+    display: none;
+  }
 }
 </style>

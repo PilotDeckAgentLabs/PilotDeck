@@ -1,14 +1,14 @@
 :root {
-  /* Brand Colors - Modern Tech Blue */
-  --primary-500: #3b82f6;
-  --primary-600: #2563eb;
-  --primary-glow: rgba(59, 130, 246, 0.5);
+  /* Brand Colors - monochrome with cool accent */
+  --primary-500: #111827;
+  --primary-600: #030712;
+  --primary-glow: rgba(17, 24, 39, 0.24);
 
   /* Functional Colors */
   --primary-color: var(--primary-500);
   --primary-hover: var(--primary-600);
-  --secondary-color: #64748b;
-  --secondary-hover: #475569;
+  --secondary-color: #525f76;
+  --secondary-hover: #344155;
   
   /* Semantic Statuses (Light Mode Default) */
   --status-planning-bg: #e0f2fe; --status-planning-text: #0369a1;
@@ -24,20 +24,22 @@
   --priority-urgent-bg: #fee2e2; --priority-urgent-text: #b91c1c;
 
   /* Neutrals & Surfaces */
-  --bg-color: #f8fafc;
-  --bg-secondary: #f1f5f9;
-  --bg-gradient: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+  --bg-color: #f6f7f9;
+  --bg-secondary: #eceff3;
+  --bg-gradient: radial-gradient(circle at top, #ffffff 0%, #f6f7f9 54%, #eceff3 100%);
   
   --card-bg: #ffffff;
-  --card-border: rgba(226, 232, 240, 0.8);
+  --card-border: rgba(203, 213, 225, 0.7);
   
-  --header-bg: rgba(255, 255, 255, 0.8);
-  --header-border: rgba(226, 232, 240, 0.6);
+  --header-bg: rgba(255, 255, 255, 0.86);
+  --header-border: rgba(203, 213, 225, 0.66);
+  --logo-bg: #f8fafc;
+  --logo-border: rgba(15, 23, 42, 0.14);
 
   /* Text */
   --text-primary: #0f172a;
-  --text-secondary: #475569;
-  --text-muted: #94a3b8;
+  --text-secondary: #334155;
+  --text-muted: #7b879c;
 
   /* UI Elements */
   --border-color: #e2e8f0;
@@ -45,10 +47,10 @@
   --border-radius-sm: 8px;
   
   /* Effects */
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-  --shadow-glow: 0 0 15px rgba(59, 130, 246, 0.1);
+  --shadow-sm: 0 1px 2px 0 rgba(15, 23, 42, 0.08);
+  --shadow-md: 0 8px 16px -8px rgba(15, 23, 42, 0.22), 0 4px 8px -4px rgba(15, 23, 42, 0.12);
+  --shadow-lg: 0 16px 32px -16px rgba(15, 23, 42, 0.3);
+  --shadow-glow: 0 0 18px rgba(17, 24, 39, 0.12);
   
   --backdrop-blur: blur(12px);
   
@@ -59,25 +61,27 @@
 
 /* Dark Theme - The "Tech" Look */
 [data-theme='dark'] {
-  --primary-color: #60a5fa;
-  --primary-hover: #3b82f6;
+  --primary-color: #e2e8f0;
+  --primary-hover: #f8fafc;
 
   /* Deep Space Backgrounds */
-  --bg-color: #0f172a;
-  --bg-secondary: #1e293b;
-  --bg-gradient: linear-gradient(180deg, #0f172a 0%, #020617 100%);
+  --bg-color: #080b12;
+  --bg-secondary: #111827;
+  --bg-gradient: radial-gradient(circle at top, #16202f 0%, #0d1420 40%, #080b12 100%);
   
-  --card-bg: rgba(30, 41, 59, 0.9);
-  --card-border: rgba(255, 255, 255, 0.1);
+  --card-bg: rgba(17, 24, 39, 0.92);
+  --card-border: rgba(148, 163, 184, 0.22);
   
-  --header-bg: rgba(15, 23, 42, 0.9);
-  --header-border: rgba(255, 255, 255, 0.05);
+  --header-bg: rgba(8, 11, 18, 0.9);
+  --header-border: rgba(148, 163, 184, 0.16);
+  --logo-bg: rgba(15, 23, 42, 0.9);
+  --logo-border: rgba(148, 163, 184, 0.3);
 
   /* Text */
   --text-primary: #f8fafc;
   --text-secondary: #cbd5e1;
-  --text-muted: #64748b;
-  --border-color: rgba(255, 255, 255, 0.1);
+  --text-muted: #8090a9;
+  --border-color: rgba(148, 163, 184, 0.22);
 
   /* Semantic Statuses (Dark Mode) */
   --status-planning-bg: rgba(14, 165, 233, 0.15); --status-planning-text: #7dd3fc;
@@ -88,12 +92,12 @@
 
   /* Priorities (Dark Mode) */
   --priority-low-bg: rgba(148, 163, 184, 0.1); --priority-low-text: #94a3b8;
-  --priority-medium-bg: rgba(59, 130, 246, 0.15); --priority-medium-text: #93c5fd;
+  --priority-medium-bg: rgba(56, 189, 248, 0.16); --priority-medium-text: #7dd3fc;
   --priority-high-bg: rgba(249, 115, 22, 0.15); --priority-high-text: #fdba74;
   --priority-urgent-bg: rgba(239, 68, 68, 0.15); --priority-urgent-text: #fca5a5;
 
   /* Effects */
-  --shadow-md: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
-  --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
-  --shadow-glow: 0 0 20px rgba(59, 130, 246, 0.2);
+  --shadow-md: 0 10px 20px -10px rgba(2, 6, 23, 0.75);
+  --shadow-lg: 0 24px 32px -20px rgba(2, 6, 23, 0.85);
+  --shadow-glow: 0 0 20px rgba(226, 232, 240, 0.12);
 }

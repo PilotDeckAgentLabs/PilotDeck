@@ -20,6 +20,13 @@ export function useTheme() {
 
   function applyTheme(theme: Theme) {
     document.documentElement.setAttribute('data-theme', theme)
+    syncFavicon(theme)
+  }
+
+  function syncFavicon(theme: Theme) {
+    const favicon = document.getElementById('app-favicon') as HTMLLinkElement | null
+    if (!favicon) return
+    favicon.href = theme === 'dark' ? '/res/icon-white.png' : '/res/icon-black.png'
   }
 
   // Watch for external changes
