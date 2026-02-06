@@ -1,209 +1,162 @@
 # PilotDeck
 
-面向开发者个人与团队内部的轻量项目管理与 Agent 协作控制台。
+English README: [README.en.md](./README.en.md)
 
-- 快速部署、自托管：Flask + SQLite 单文件数据库，无需独立 DB 服务
-- Agent 深度介入：Agent 可通过 API 记录 runs/events/actions，并以可审计的方式更新项目进度与里程碑
-- 适合并行推进：同时管理多个项目与多个 Agent，减少“口头同步”和“进度漂移”
+PilotDeck 是面向个人开发者与团队内部的轻量项目管理与 Agent 协作审查平台。
 
-## 适用场景
+产品定位（本仓库）：**Agent 驱动的 ProjectOps 与审计追踪**
 
-- 个人/独立开发：跟踪多个项目的状态、优先级、成本与收益
-- 团队内部使用：在内网/私有环境共享项目台账与执行记录，用于协作与交接
-- Agent 驱动开发流程：让 Agent 自动推进项目并写回进度、里程碑与变更原因
-- 多 Agent 并行：通过 `updatedAt + ifUpdatedAt` 的乐观并发控制，降低并发写入冲突
+- **项目推进**：以 `projects/runs/events/actions` 管理任务状态、进展与里程碑。
+- **过程可审查**：Timeline 记录“谁在何时做了什么、为什么做、产生了什么影响”。
+- **成本可观测**：通过 `usage` 上报和 `stats/tokens` 聚合观察 token/cost 趋势。
+
+## 仓库边界
+
+当前仓库只包含：
+
+- `PilotDeck Server`（Flask + SQLite）
+- `PilotDeck Web`（Vue 3）
+
+不包含但已支持对接：
+
+- `PilotDeckDesktop`（Windows 客户端，承载 AgentOps 主交互）
+- `opencode-pilotdeck`（OpenCode 插件）
 
 ## 核心能力
 
-- 项目管理：状态、优先级、分类、进度、标签、成本/收益
-- Agent API：
-  - runs：一次 Agent 工作会话/工作单元的容器（用于聚合、归档、写总结与最终状态）
-  - events：append-only 的项目时间线（审计记录：发生了什么/为什么）
-  - actions：语义化动作入口（可选更新项目 + 自动写入 event + 内置幂等）
-  - profiles：Agent 档案（风格、技能、写回策略）管理
-  - capabilities：能力包（PromptPack + SkillPack）管理
-  - usage：OpenCode 插件/客户端上报 token 使用与成本
+- 轻量自托管：单文件 SQLite，无需额外数据库服务
+- 多项目管理：状态、优先级、进度、标签、成本与收益
+- Timeline 审计：事件 append-only，支持 run 归档与动作追踪
+- 并发安全：`updatedAt + ifUpdatedAt` 乐观并发控制
+- Agent 语义动作：`POST /api/agent/actions`（可选更新项目 + 自动写 event + 幂等）
+- Agent 协作与审查：runs/events/actions 支持执行归档、证据沉淀与语义化写回
 - Token 统计：
-  - `GET /api/stats/tokens` 按项目/Agent/workspace/model 聚合 token 与 cost
-- 备份/恢复（最简单可理解的方式）：
-  - 导出备份：浏览器下载 SQLite 快照文件
-  - 从备份恢复：上传快照文件覆盖当前数据库
+  - `POST /api/agent/usage` 上报 token/cost
+  - `GET /api/stats/tokens` 聚合查询（按项目/Agent/workspace/model）
+
+## 关键对象模型
+
+- `Project`：项目事实状态（status/priority/progress/...）
+- `Run`：一次 Agent 工作单元容器（开始到结束）
+- `Event`：append-only 时间线记录（发生了什么/为什么）
+- `Action`：语义化更新入口（常见字段变更 + 自动审计）
+- `Agent Profile`：Agent 档案元数据（主要由 Desktop 侧管理）
+- `Agent Capability`：能力包元数据（主要由 Desktop 侧管理）
+- `Token Usage`：会话/运行成本记录
 
 ## 架构概览
 
-- 后端：`server/mypm`（Flask API）
-- 数据库：SQLite（默认 `data/pm.db`）
-- 前端：
-  - Vue 3 UI（构建后可用）：`/`
+- 后端：`server/mypm`
+- 数据库：`data/pm.db`（默认）
+- 前端：`frontend`（构建后由 Flask 静态服务）
 
-文档：
-- Agent 客户端对接：`docs/AGENT_API.md` / `docs/AGENT_API.zh-CN.md`
-- 工程架构：`docs/ARCHITECTURE.md` / `docs/ARCHITECTURE.zh-CN.md`
+推荐阅读：
+
+- Agent API：`docs/AGENT_API.md` / `docs/AGENT_API.zh-CN.md`
+- 架构说明：`docs/ARCHITECTURE.md` / `docs/ARCHITECTURE.zh-CN.md`
 - 数据库运维：`docs/DB_OPS.md` / `docs/DB_OPS.zh-CN.md`
+- PilotDeck Skill：`docs/PILOTDECK_SKILL.md` / `docs/PILOTDECK_SKILL.zh-CN.md`
 
-## Agent 概念速读（Run / Event / Action）
+## 给 PilotDeckDesktop / opencode-pilotdeck 的对接接口
 
-这三者分别解决不同问题：
+运行与时间线：
 
-- Run：把一段时间内的 Agent 行为聚合成“一个工作单元”（开始/结束/状态/总结/指标）。
-- Event：项目级时间线（append-only），用于审计与复盘；可以关联 `projectId` 和 `runId`。
-- Action：给 Agent 的“动词接口”。每条 action 会写入一条 event（作为幂等键），并且可能更新项目。
+- `POST /api/agent/runs`
+- `PATCH /api/agent/runs/<runId>`
+- `POST /api/agent/events`
+- `POST /api/agent/actions`
 
-如何选择写入方式：
+Desktop Agent 配置（由本服务提供存储/API）：
 
-1) 需要更新任意项目字段（最灵活）：用 `PATCH /api/projects/<id>`，并显式写 `POST /api/agent/events` 记录原因。
-2) 只需要常见动作 + 想要自动留痕与幂等：用 `POST /api/agent/actions`。
+- `GET/POST /api/agent/profiles`
+- `GET/PATCH/DELETE /api/agent/profiles/<profileId>`
+- `GET/POST /api/agent/capabilities`
+- `GET/PATCH/DELETE /api/agent/capabilities/<capabilityId>`
 
-完整说明（面向人类与 LLM 客户端）：`docs/AGENT_API.md` / `docs/AGENT_API.zh-CN.md`
+Token 统计：
 
-## 与 PilotDeckDesktop / opencode-pilotdeck 的集成
+- `POST /api/agent/usage`（支持批量 `records`）
+- `GET /api/agent/usage`
+- `GET /api/stats/tokens`
 
-本仓库仅包含 PilotDeck Server + Web。以下能力用于给 `PilotDeckDesktop` 与 `opencode-pilotdeck` 进行对接：
+建议插件在 `session.idle` 或 run 结束时上报 usage，以减少碎片写入。
 
-- 运行记录上报：
-  - `POST /api/agent/runs`
-  - `PATCH /api/agent/runs/<runId>`
-  - `POST /api/agent/events`
-- Agent 信息管理：
-  - `GET/POST /api/agent/profiles`
-  - `GET/PATCH/DELETE /api/agent/profiles/<profileId>`
-  - `GET/POST /api/agent/capabilities`
-  - `GET/PATCH/DELETE /api/agent/capabilities/<capabilityId>`
-- Token 使用上报与查询：
-  - `POST /api/agent/usage`（支持批量 records）
-  - `GET /api/agent/usage`
-  - `GET /api/stats/tokens`（Web 仪表盘聚合）
+## 本地开发
 
-建议 `opencode-pilotdeck` 在 `session.idle` 或 run 结束时上报 usage，避免过度碎片化写入。
+### 环境要求
 
-## 快速开始（本地）
+- Python 3.10+
+- Node.js 22.x（见 `NODE_VERSION.md`）
 
-### 0) 环境要求
-
-**Node.js 版本**: v22.x（22 系列的任意小版本）
-
-```bash
-# 使用 nvm 安装（推荐）
-nvm install 22
-nvm use 22
-
-# 或手动安装 Node.js v22.x
-# 下载地址: https://nodejs.org/
-```
-
-详细说明见 [NODE_VERSION.md](./NODE_VERSION.md)
-
-### 1) 安装依赖
+### 安装依赖
 
 ```bash
 python -m pip install -r requirements.txt
 ```
 
-### 2) 启动服务
+```bash
+cd frontend
+npm ci
+```
+
+### 启动服务
+
+后端：
 
 ```bash
 python server/main.py
 ```
 
-默认访问：
-- UI：`http://localhost:8689/`
-- API：`http://localhost:8689/api`
-
-### 2.1) 构建 UI（如需 Web 界面则必须）
-
-构建后可访问：`http://localhost:8689/`
+前端构建（首次或更新前端后）：
 
 ```bash
 cd frontend
-
-# 使用 npm ci 确保依赖版本一致（推荐）
-npm ci
-
-# 或使用 npm install
-npm install
-
 npm run build
 ```
 
-### 3) 可选环境变量
+默认访问：
 
-- `PM_PORT`：端口（默认 8689）
-- `PM_DEBUG`：调试（默认 0）
-- `PM_DB_FILE`：SQLite DB 文件路径（默认 `data/pm.db`）
-- `PM_ADMIN_TOKEN`：运维口令（备份/恢复/部署等敏感接口需提供请求头 `X-PM-Token`）
-- `PM_AGENT_TOKEN`：Agent 口令（设置后 Agent API 需提供 `X-PM-Agent-Token`）
+- Web UI: `http://localhost:8689/`
+- API: `http://localhost:8689/api`
 
-#### PM_ADMIN_TOKEN 如何设置
+## 环境变量
 
-本项目不会提供默认口令。你需要在运行服务的环境里显式设置 `PM_ADMIN_TOKEN`。
+- `PM_PORT`：服务端口（默认 `8689`）
+- `PM_DEBUG`：调试开关（默认 `0`）
+- `PM_DB_FILE`：SQLite 文件路径（默认 `data/pm.db`）
+- `PM_ADMIN_TOKEN`：管理接口口令（备份/恢复/部署）
+- `PM_AGENT_TOKEN`：Agent API 口令
 
-本地（macOS/Linux，临时生效）：
-
-```bash
-export PM_ADMIN_TOKEN="<your-strong-token>"
-python server/main.py
-```
-
-本地（Windows PowerShell，临时生效）：
+设置示例（PowerShell）：
 
 ```powershell
-$env:PM_ADMIN_TOKEN = "<your-strong-token>"
+$env:PM_ADMIN_TOKEN = "<your-admin-token>"
+$env:PM_AGENT_TOKEN = "<your-agent-token>"
 python server\main.py
 ```
 
-Linux 服务器（systemd，推荐持久化）：
+## 备份与恢复
 
-1) 编辑你的服务 unit（例如 `/etc/systemd/system/pilotdeck.service`）在 `[Service]` 下增加：
+可在 Web「运维」界面使用：
 
-```ini
-Environment=PM_ADMIN_TOKEN=<your-strong-token>
-```
+- 导出备份（下载 SQLite 快照）
+- 从备份恢复（上传快照覆盖当前 DB）
 
-2) 使配置生效：
+详见：`docs/DB_OPS.md` / `docs/DB_OPS.zh-CN.md`
 
-```bash
-sudo systemctl daemon-reload
-sudo systemctl restart pilotdeck
-```
-
-设置后，在 UI 的“运维”中填写该口令即可使用导出备份/恢复等操作。
-
-## 备份与恢复（推荐从 UI 开始）
-
-1) 进入 UI 的“运维”
-2) 填写 `PM_ADMIN_TOKEN`
-3) 点击：
-   - “导出备份（下载）”：下载 `pm_backup_*.db`
-   - “从备份恢复”：选择并上传 `pm_backup_*.db`
-
-更完整说明与排障：`docs/DB_OPS.md` / `docs/DB_OPS.zh-CN.md`
-
-## 部署到 Linux 服务器（可选）
-
-仓库提供 `deploy_pull_restart.sh` 一键拉取代码、安装依赖、构建前端并重启服务。
+## 部署（Linux）
 
 ```bash
 sudo ./deploy_pull_restart.sh
 ```
 
-注：脚本会尝试安装 systemd service；也支持无 systemd 的 nohup 模式。
-
-### （可选）启用每日自动备份
-
-自动备份默认不启用。需要你在服务器上手动安装 systemd timer：
+可选自动备份：
 
 ```bash
 sudo ./setup_auto_backup.sh
 ```
 
-如果你希望自动上传到云端（例如 OSS 预签名 URL / 自建上传服务），编辑：`/etc/pilotdeck/backup.env`。
+## 路线方向
 
-## 命名说明
-
-代码层面仍可能使用历史名称（例如 systemd service、包名等）。本 README 将产品对外名称统一为 PilotDeck。
-
-## 贡献与扩展方向
-
-- 更完善的 Agent Skill 管理与项目推进流程编排
-- 更清晰的项目模型（里程碑/交付物/文档生成）
-- 更细粒度的权限与审计
+- 增强 Timeline 审查体验（证据、影响、回写建议）
+- 优化多项目、多 Agent 成本归因与趋势分析
