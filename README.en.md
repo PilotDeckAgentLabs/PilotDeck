@@ -87,6 +87,26 @@ sudo ./setup_auto_backup.sh
 
 ---
 
+## Documentation Index
+
+### 📚 Core Documentation
+- **[Architecture (ARCHITECTURE.md)](docs/ARCHITECTURE.md)** - Complete technical architecture, backend/frontend design, data flow
+- **[Components (COMPONENTS.md)](docs/COMPONENTS.md)** - Vue 3 component guide and best practices
+- **[API Reference (API_REFERENCE.md)](docs/API_REFERENCE.md)** - REST API quick reference with examples
+
+### 🤖 Agent Integration
+- **[Agent API Guide (AGENT_API.md)](docs/AGENT_API.md)** - Complete agent integration guide (bilingual)
+- **[PilotDeck Skill (PILOTDECK_SKILL.md)](docs/PILOTDECK_SKILL.md)** - OhMyOpenCode Skill usage guide
+
+### 🔧 Operations
+- **[Database Operations (DB_OPS.md)](docs/DB_OPS.md)** - Backup/restore/migration guide
+- **[Login Feature (LOGIN_FEATURE.md)](docs/LOGIN_FEATURE.md)** - Authentication system documentation
+
+### 📝 Templates
+- **[Project Status Template (PROJECT_STATUS_TEMPLATE.md)](docs/PROJECT_STATUS_TEMPLATE.md)** - Agent project sync template
+
+---
+
 ## Community & Support
 
 * Issues / Feature Requests: please use GitHub Issues

@@ -14,7 +14,7 @@ Maintain a local project status file and sync changes to PilotDeck using runs, a
 1) Read the status file (`pilotdeck/status.yaml` or `pilotdeck/status/<project-key>.yaml`).
 2) Validate required fields (`pilotdeck.base_url`, `pilotdeck.project_id`, `pilotdeck.agent_id`, `status.*`).
    - Optional canonical project name: `pilotdeck.name`.
-3) If missing, generate the status file from `docs/PROJECT_STATUS_TEMPLATE.md` and populate known fields (project name, base URL, project ID).
+3) If missing, generate the status file from `docs/product/PROJECT_STATUS_TEMPLATE.md` and populate known fields (project name, base URL, project ID).
 4) Create a run via `POST /api/agent/runs` (include `projectId`, `agentId`, `title`).
 5) Sync status fields:
    - Resolve project display name by priority: `pilotdeck.name` -> `project.name`.
@@ -38,6 +38,6 @@ Maintain a local project status file and sync changes to PilotDeck using runs, a
 
 ## References
 
-- `docs/PROJECT_STATUS_TEMPLATE.md`
-- `docs/PILOTDECK_SKILL.md`
-- `docs/AGENT_API.md`
+- `docs/product/PROJECT_STATUS_TEMPLATE.md`
+- `docs/agent/PILOTDECK_SKILL.md`
+- `docs/agent/AGENT_API.md`

@@ -16,9 +16,9 @@ pilotdeck:
 status:
   lifecycle: "in-progress"
   priority: "medium"
-  progress: 72
+  progress: 85
   category: "platform"
-  tags: ["pilotdeck", "agent", "project-management", "desktop-integration", "agentops"]
+  tags: ["pilotdeck", "agent", "project-management", "desktop-integration", "agentops", "documentation"]
 
 summary:
   goal: "Provide a self-hosted project management and agent collaboration console"
@@ -35,13 +35,19 @@ milestones:
     status: "done"
     due: "2026-02-05"
     notes: "Added status template and skill design docs"
-  - name: "PilotDeckSkill workflow"
-    status: "doing"
-    due: "2026-02-10"
+  - name: "Timeline UI modernization"
+    status: "done"
+    due: "2026-02-11"
+    notes: "Created modern Agent timeline visualization with Vue 3 components"
+  - name: "Documentation architecture refactoring"
+    status: "done"
+    due: "2026-02-11"
+    notes: "Implemented frontend/backend separation with high cohesion, low coupling"
 
 next_actions:
-  - "Wire a runnable PilotDeckSkill sync command"
-  - "Sync status.yaml into PilotDeck via actions/events"
+  - "Implement real-time updates (WebSocket)"
+  - "Add Gantt chart timeline view"
+  - "Enhance analytics dashboard"
 
 risks:
   - title: "Concurrent updates"
@@ -55,9 +61,9 @@ dependencies:
 
 links:
   - title: "ARCHITECTURE"
-    url: "docs/ARCHITECTURE.zh-CN.md"
+    url: "docs/ARCHITECTURE.md"
   - title: "AGENT_API"
-    url: "docs/AGENT_API.zh-CN.md"
+    url: "docs/agent/AGENT_API.zh-CN.md"
 
 activity_log:
   - ts: "2026-02-05T00:20:00+08:00"
@@ -76,8 +82,13 @@ activity_log:
     author: "opencode/sisyphus"
     summary: "Synced session execution record via pilotdeck-skill workflow"
     details: "Created run run-60fdc6fa, wrote actions/events, patched project summary, and finalized run after server/docs updates"
+  - ts: "2026-02-11T18:57:00+08:00"
+    author: "opencode/sisyphus"
+    summary: "Completed documentation architecture refactoring"
+    details: "Refactored documentation to frontend/backend separation: created 5 new docs, moved 9 files, updated 4 files with cross-references. Verified builds pass (frontend 1.54s, backend health 200 OK). Progress: 72% → 85%"
 
 sync_state:
-  last_sync_at: "2026-02-06T19:00:20+08:00"
-  last_sync_result: "success"
+  last_sync_at: "2026-02-11T18:57:00+08:00"
+  last_sync_result: "pending"
   last_project_updated_at: "2026-02-06T19:00:33.458526"
+  notes: "Sync requires valid PM_AGENT_TOKEN or session auth"

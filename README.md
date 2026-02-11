@@ -87,6 +87,26 @@ sudo ./setup_auto_backup.sh
 
 ---
 
+## 文档索引 / Documentation
+
+### 📚 核心文档 / Core Docs
+- **[架构总览 (ARCHITECTURE.md)](docs/ARCHITECTURE.md)** - 完整技术架构与数据流 / System architecture & data flow
+- **[前端指南 (Frontend Guide)](frontend/docs/README.md)** - Vue 3 组件库与前端架构 / Vue 3 components & frontend arch
+- **[后端指南 (Backend Guide)](server/docs/README.md)** - Flask API 与数据库设计 / Flask API & DB design
+
+### 🤖 Agent 集成 / Integration
+- **[Agent API 指南 (AGENT_API.md)](docs/agent/AGENT_API.md)** - Agent 集成完整指南 / Agent integration guide
+- **[PilotDeck Skill (PILOTDECK_SKILL.md)](docs/agent/PILOTDECK_SKILL.md)** - OhMyOpenCode Skill 使用指南
+
+### 🔧 运维与安全 / Ops & Security
+- **[数据库操作 (DATABASE.md)](server/docs/DATABASE.md)** - 备份/恢复/迁移指南 / DB backup & restore
+- **[认证系统 (AUTHENTICATION.md)](server/docs/AUTHENTICATION.md)** - 认证与权限说明 / Auth & permissions
+
+### 📝 模板 / Templates
+- **[项目状态模板 (PROJECT_STATUS_TEMPLATE.md)](docs/product/PROJECT_STATUS_TEMPLATE.md)** - Agent 项目同步模板
+
+---
+
 ## 交流与支持
 
 * Issue / Feature Request：请使用 GitHub Issues
