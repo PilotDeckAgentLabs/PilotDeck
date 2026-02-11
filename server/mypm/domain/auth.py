@@ -72,6 +72,35 @@ def require_login(f):
     return decorated_function
 
 
+def require_login_or_agent(f):
+    """Decorator to require either web login (session) or agent token.
+    
+    This allows endpoints to be accessed by both:
+    1. Web UI users (authenticated via session cookie)
+    2. Agents (authenticated via X-PM-Agent-Token header)
+    
+    Use this for APIs that need to be accessible from both contexts,
+    such as /api/projects endpoints that agents need to update.
+    """
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        # Check session first (Web UI)
+        if 'user_id' in session:
+            return f(*args, **kwargs)
+        
+        # Check agent token (Agent API)
+        ok, err = require_agent()
+        if ok:
+            return f(*args, **kwargs)
+        
+        # Both authentication methods failed
+        return jsonify({
+            'success': False,
+            'error': '未登录'
+        }), 401
+    return decorated_function
+
+
 def generate_secret_key() -> str:
     """Generate a secure secret key for Flask session."""
     return secrets.token_hex(32)
