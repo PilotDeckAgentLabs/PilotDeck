@@ -27,6 +27,10 @@ Complete guide to integrating your agent with PilotDeck's API.
 Quick reference for all REST API endpoints with curl examples.
 
 ### 🔧 I'm Managing Operations
+**Start Here**: [server/docs/DEPLOYMENT.md](../server/docs/DEPLOYMENT.md)  
+Production deployment, systemd configuration, backups, and troubleshooting.
+
+### 🗄️ I Need Database Operations
 **Start Here**: [server/docs/DATABASE.md](../server/docs/DATABASE.md)  
 Backup, restore, migration, and database procedures.
 
@@ -56,6 +60,7 @@ Backup, restore, migration, and database procedures.
 |----------|---------|----------|
 | [Backend Architecture](../server/docs/ARCHITECTURE.md) | Flask architecture details | Backend developers |
 | [API Reference](../server/docs/API_REFERENCE.md) | REST API quick reference | All developers |
+| [Deployment Guide](../server/docs/DEPLOYMENT.md) | Production deployment | DevOps/SysAdmin |
 | [Database Ops](../server/docs/DATABASE.md) | DB schema & operations | Backend/DevOps |
 | [Authentication](../server/docs/AUTHENTICATION.md) | Auth system details | Backend developers |
 
@@ -78,6 +83,10 @@ Backup, restore, migration, and database procedures.
 ---
 
 ## 🆕 What's New
+
+### 2026-02-11: Production Deployment Guide
+- **New Documentation**: Complete `DEPLOYMENT.md` with systemd configuration, environment variables, backup automation, reverse proxy setup, and troubleshooting.
+- **Comprehensive Coverage**: Detailed explanation of `deploy_pull_restart.sh`, service management, and security best practices.
 
 ### 2026-02-11: Documentation Refactoring
 - **Separated Concerns**: Documentation is now split into `frontend/docs/` and `server/docs/` for better maintainability.
@@ -107,6 +116,12 @@ Backup, restore, migration, and database procedures.
 
 - **Backup the database?**  
   → [DATABASE.md](../server/docs/DATABASE.md)
+
+- **Deploy to production server?**  
+  → [DEPLOYMENT.md](../server/docs/DEPLOYMENT.md)
+
+- **Configure systemd service?**  
+  → [DEPLOYMENT.md](../server/docs/DEPLOYMENT.md#systemd-service-configuration)
 
 - **Add a new Vue component?**  
   → [COMPONENTS.md](../frontend/docs/COMPONENTS.md)

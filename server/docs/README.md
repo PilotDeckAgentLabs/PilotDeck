@@ -15,6 +15,7 @@ Welcome to the PilotDeck backend developer guide! This directory contains techni
 - **[API_REFERENCE.md](./API_REFERENCE.md)**: REST API quick reference with curl examples.
 - **[DATABASE.md](./DATABASE.md)**: Database schema, migrations, and operations (formerly DB_OPS.md).
 - **[AUTHENTICATION.md](./AUTHENTICATION.md)**: Detailed explanation of the authentication system (formerly LOGIN_FEATURE.md).
+- **[DEPLOYMENT.md](./DEPLOYMENT.md)**: Complete production deployment guide with systemd, backups, and troubleshooting.
 
 ## 🛠 Common Tasks
 

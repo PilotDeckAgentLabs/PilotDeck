@@ -99,6 +99,7 @@ sudo ./setup_auto_backup.sh
 - **[PilotDeck Skill (PILOTDECK_SKILL.md)](docs/agent/PILOTDECK_SKILL.md)** - OhMyOpenCode Skill 使用指南
 
 ### 🔧 运维与安全 / Ops & Security
+- **[生产部署 (DEPLOYMENT.md)](server/docs/DEPLOYMENT.md)** - 完整部署指南 / Complete deployment guide
 - **[数据库操作 (DATABASE.md)](server/docs/DATABASE.md)** - 备份/恢复/迁移指南 / DB backup & restore
 - **[认证系统 (AUTHENTICATION.md)](server/docs/AUTHENTICATION.md)** - 认证与权限说明 / Auth & permissions
 
