@@ -85,10 +85,10 @@ activity_log:
   - ts: "2026-02-11T18:57:00+08:00"
     author: "opencode/sisyphus"
     summary: "Completed documentation architecture refactoring"
-    details: "Refactored documentation to frontend/backend separation: created 5 new docs, moved 9 files, updated 4 files with cross-references. Verified builds pass (frontend 1.54s, backend health 200 OK). Progress: 72% → 85%"
+    details: "Refactored documentation to frontend/backend separation: created 5 new docs, moved 9 files, updated 4 files with cross-references. Verified builds pass (frontend 1.54s, backend health 200 OK). Progress: 72% -> 85%. Committed 6592fd9 and pushed to origin/main."
 
 sync_state:
-  last_sync_at: "2026-02-11T18:57:00+08:00"
-  last_sync_result: "pending"
+  last_sync_at: "2026-02-11T19:05:00+08:00"
+  last_sync_result: "local_only"
   last_project_updated_at: "2026-02-06T19:00:33.458526"
-  notes: "Sync requires valid PM_AGENT_TOKEN or session auth"
+  notes: "Server requires PM_AGENT_TOKEN. Status updated locally in status.yaml and committed to git (6592fd9)."
