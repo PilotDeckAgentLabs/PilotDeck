@@ -16,9 +16,9 @@ pilotdeck:
 status:
   lifecycle: "in-progress"
   priority: "medium"
-  progress: 85
+  progress: 90
   category: "platform"
-  tags: ["pilotdeck", "agent", "project-management", "desktop-integration", "agentops", "documentation"]
+  tags: ["pilotdeck", "agent", "project-management", "desktop-integration", "agentops", "documentation", "deployment"]
 
 summary:
   goal: "Provide a self-hosted project management and agent collaboration console"
@@ -43,6 +43,14 @@ milestones:
     status: "done"
     due: "2026-02-11"
     notes: "Implemented frontend/backend separation with high cohesion, low coupling"
+  - name: "Production deployment documentation"
+    status: "done"
+    due: "2026-02-11"
+    notes: "Created comprehensive deployment guide (DEPLOYMENT.md, 720 lines) covering systemd, Node.js, backups, and troubleshooting"
+  - name: "Dual authentication for Projects API"
+    status: "done"
+    due: "2026-02-11"
+    notes: "Implemented require_login_or_agent decorator enabling both Web UI (session) and Agent (token) access to /api/projects endpoints"
 
 next_actions:
   - "Implement real-time updates (WebSocket)"
@@ -86,9 +94,22 @@ activity_log:
     author: "opencode/sisyphus"
     summary: "Completed documentation architecture refactoring"
     details: "Refactored documentation to frontend/backend separation: created 5 new docs, moved 9 files, updated 4 files with cross-references. Verified builds pass (frontend 1.54s, backend health 200 OK). Progress: 72% -> 85%. Committed 6592fd9 and pushed to origin/main."
+  - ts: "2026-02-11T20:10:00+08:00"
+    author: "opencode/sisyphus"
+    summary: "Created production deployment documentation"
+    details: "Created comprehensive DEPLOYMENT.md (720 lines) covering prerequisites, Node.js v22.x installation, systemd service configuration, automated backups, Nginx proxy, and troubleshooting. Updated 3 documentation indexes. Committed c47232d."
+  - ts: "2026-02-11T20:15:00+08:00"
+    author: "opencode/sisyphus"
+    summary: "Implemented dual authentication for Projects API"
+    details: "Added require_login_or_agent decorator supporting both Web UI (session cookie) and Agent (token header) authentication. Updated all 8 /api/projects endpoints. Verified PATCH /api/projects/<id> accessible without session. Redeployed server. Committed e5517b6 and pushed to origin/main."
+  - ts: "2026-02-11T20:28:00+08:00"
+    author: "opencode/sisyphus"
+    summary: "Synced project status to PilotDeck server"
+    details: "Executed full pilotdeck-skill workflow: created run run-22636052, synced progress (72% -> 90%), added tags (documentation, deployment), wrote milestone event, and finalized run. Updated sync_state with last_project_updated_at: 2026-02-11T20:25:58.845264."
 
 sync_state:
-  last_sync_at: "2026-02-11T19:05:00+08:00"
-  last_sync_result: "local_only"
-  last_project_updated_at: "2026-02-06T19:00:33.458526"
-  notes: "Server requires PM_AGENT_TOKEN. Status updated locally in status.yaml and committed to git (6592fd9)."
+  last_sync_at: "2026-02-11T20:28:00+08:00"
+  last_sync_result: "success"
+  last_project_updated_at: "2026-02-11T20:25:58.845264"
+  last_run_id: "run-22636052"
+  notes: "Successfully synced progress (90%), tags (documentation, deployment), and milestones to PilotDeck server."
