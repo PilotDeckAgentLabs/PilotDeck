@@ -2,7 +2,21 @@
   <div class="modal-overlay" @click.self="$emit('close')">
     <div class="modal-content detail-modal">
       <div class="modal-header">
-        <h2>{{ project.name }}</h2>
+        <div class="header-content">
+          <h2>{{ project.name }}</h2>
+          <div class="project-id-row">
+            <span class="project-id-label">ID:</span>
+            <code class="project-id">{{ project.id }}</code>
+            <button 
+              @click.stop="copyProjectId" 
+              class="copy-id-btn"
+              :class="{ copied: idCopied }"
+              :title="idCopied ? '已复制!' : '复制项目ID'"
+            >
+              {{ idCopied ? '✓' : '📋' }}
+            </button>
+          </div>
+        </div>
         <button @click="$emit('close')" class="btn-close">×</button>
       </div>
 
@@ -132,6 +146,7 @@ const agentStore = useAgentStore()
 const activeTab = ref<'details' | 'timeline'>('details')
 const loadingTimeline = ref(false)
 const timelineError = ref<string | null>(null)
+const idCopied = ref(false)
 
 const statusLabels: Record<string, string> = {
   'planning': '计划中',
@@ -221,6 +236,18 @@ function handleDelete() {
     emit('delete', props.project.id)
   }
 }
+
+async function copyProjectId() {
+  try {
+    await navigator.clipboard.writeText(props.project.id)
+    idCopied.value = true
+    setTimeout(() => {
+      idCopied.value = false
+    }, 2000)
+  } catch (err) {
+    console.error('Failed to copy project ID:', err)
+  }
+}
 </script>
 
 <style scoped>
@@ -257,16 +284,70 @@ function handleDelete() {
 .modal-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   padding: 20px 24px;
   border-bottom: 1px solid var(--border-color);
   flex-shrink: 0;
 }
 
+.header-content {
+  flex: 1;
+  padding-right: 16px;
+}
+
 .modal-header h2 {
-  margin: 0;
+  margin: 0 0 8px 0;
   font-size: 20px;
   color: var(--text-primary);
+}
+
+.project-id-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.project-id-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.project-id {
+  font-family: 'SF Mono', 'Roboto Mono', 'Menlo', 'Monaco', 'Courier New', monospace;
+  font-size: 11px;
+  color: var(--text-secondary);
+  background: var(--bg-color);
+  padding: 2px 6px;
+  border-radius: 3px;
+  border: 1px solid var(--border-color);
+}
+
+.copy-id-btn {
+  background: none;
+  border: 1px solid var(--border-color);
+  padding: 2px 6px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--text-secondary);
+  transition: all 0.2s;
+  line-height: 1;
+}
+
+.copy-id-btn:hover {
+  background: var(--bg-color);
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+}
+
+.copy-id-btn.copied {
+  background: var(--success-color);
+  border-color: var(--success-color);
+  color: white;
 }
 
 .btn-close {

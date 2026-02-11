@@ -52,6 +52,7 @@
           <thead>
             <tr>
               <th>项目名称</th>
+              <th>项目ID</th>
               <th>状态</th>
               <th>优先级</th>
               <th>分类</th>
@@ -68,6 +69,17 @@
             >
               <td class="project-name-cell">
                 <span class="project-name-text">{{ project.name }}</span>
+              </td>
+              <td class="project-id-cell">
+                <code class="table-project-id" :title="project.id">{{ project.id.slice(0, 10) }}...</code>
+                <button 
+                  @click.stop="copyProjectId(project.id)" 
+                  class="copy-table-btn"
+                  :class="{ copied: copiedId === project.id }"
+                  :title="copiedId === project.id ? '已复制!' : '复制完整ID'"
+                >
+                  {{ copiedId === project.id ? '✓' : '📋' }}
+                </button>
               </td>
               <td>
                 <span class="badge" :class="`status-${project.status}`">
@@ -156,6 +168,7 @@ const showOpsModal = ref(false)
 const showDetailModal = ref(false)
 const selectedProject = ref<Project | null>(null)
 const editingProject = ref<Project | null>(null)
+const copiedId = ref<string | null>(null)
 
 // Labels
 const statusLabels: Record<string, string> = {
@@ -208,6 +221,19 @@ function closeFormModal() {
 function closeDetailModal() {
   showDetailModal.value = false
   selectedProject.value = null
+}
+
+// Copy project ID
+async function copyProjectId(id: string) {
+  try {
+    await navigator.clipboard.writeText(id)
+    copiedId.value = id
+    setTimeout(() => {
+      copiedId.value = null
+    }, 2000)
+  } catch (err) {
+    console.error('Failed to copy project ID:', err)
+  }
 }
 
 // CRUD handlers
@@ -358,6 +384,45 @@ onMounted(() => {
 .project-name-text {
   font-weight: 600;
   color: var(--text-primary);
+}
+
+.project-id-cell {
+  font-family: 'SF Mono', 'Roboto Mono', monospace;
+  min-width: 140px;
+}
+
+.table-project-id {
+  font-size: 11px;
+  color: var(--text-secondary);
+  background: var(--bg-color);
+  padding: 3px 6px;
+  border-radius: 3px;
+  border: 1px solid var(--border-color);
+  margin-right: 6px;
+}
+
+.copy-table-btn {
+  background: none;
+  border: 1px solid var(--border-color);
+  padding: 2px 6px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 11px;
+  color: var(--text-muted);
+  transition: all 0.2s;
+  line-height: 1;
+}
+
+.copy-table-btn:hover {
+  background: var(--bg-color);
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+}
+
+.copy-table-btn.copied {
+  background: var(--success-color);
+  border-color: var(--success-color);
+  color: white;
 }
 
 /* Reuse Badge Styles (Consider extracting to component next time) */

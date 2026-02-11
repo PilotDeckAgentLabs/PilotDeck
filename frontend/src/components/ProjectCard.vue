@@ -1,5 +1,5 @@
 <template>
-  <div class="project-card" @click="$emit('click', project)">
+  <div class="project-card" @click="$emit('click', project)" :data-project-id="project.id">
     <div class="card-header">
       <div class="header-top">
         <h3 class="project-name">{{ project.name }}</h3>
@@ -28,15 +28,29 @@
     </div>
 
     <div class="card-footer">
-      <div class="finance">
-        <div class="finance-item cost">
-          <span class="label">成本</span>
-          <span class="value">¥{{ formatMoney(project.cost.total) }}</span>
+      <div class="footer-content">
+        <div class="project-id-small" :title="project.id">
+          <span class="id-label">ID:</span>
+          <code class="id-value">{{ project.id.slice(0, 8) }}...</code>
+          <button 
+            @click.stop="copyId" 
+            class="copy-icon-btn"
+            :class="{ copied: copied }"
+            :title="copied ? '已复制!' : '复制完整ID'"
+          >
+            {{ copied ? '✓' : '📋' }}
+          </button>
         </div>
-        <div class="finance-divider"></div>
-        <div class="finance-item revenue">
-          <span class="label">收入</span>
-          <span class="value">¥{{ formatMoney(project.revenue.total) }}</span>
+        <div class="finance">
+          <div class="finance-item cost">
+            <span class="label">成本</span>
+            <span class="value">¥{{ formatMoney(project.cost.total) }}</span>
+          </div>
+          <div class="finance-divider"></div>
+          <div class="finance-item revenue">
+            <span class="label">收入</span>
+            <span class="value">¥{{ formatMoney(project.revenue.total) }}</span>
+          </div>
         </div>
       </div>
     </div>
@@ -44,6 +58,7 @@
 </template>
 
 <script setup lang="ts">
+import { ref } from 'vue'
 import type { Project } from '../api/types'
 
 defineProps<{
@@ -53,6 +68,8 @@ defineProps<{
 defineEmits<{
   click: [project: Project]
 }>()
+
+const copied = ref(false)
 
 const statusLabels: Record<string, string> = {
   'planning': '计划中',
@@ -71,6 +88,22 @@ const priorityLabels: Record<string, string> = {
 
 function formatMoney(value: number): string {
   return value.toLocaleString('zh-CN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })
+}
+
+async function copyId(event: Event) {
+  const project = (event.currentTarget as HTMLElement).closest('.project-card')
+  const projectId = project?.getAttribute('data-project-id')
+  if (!projectId) return
+  
+  try {
+    await navigator.clipboard.writeText(projectId)
+    copied.value = true
+    setTimeout(() => {
+      copied.value = false
+    }, 2000)
+  } catch (err) {
+    console.error('Failed to copy project ID:', err)
+  }
 }
 </script>
 
@@ -204,6 +237,57 @@ function formatMoney(value: number): string {
   border-top: 1px solid var(--border-color);
   padding-top: 12px;
   margin-top: auto;
+}
+
+.footer-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.project-id-small {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  color: var(--text-muted);
+  padding: 2px 0;
+}
+
+.project-id-small .id-label {
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.project-id-small .id-value {
+  font-family: 'SF Mono', 'Roboto Mono', monospace;
+  font-size: 10px;
+  color: var(--text-secondary);
+  background: var(--bg-color);
+  padding: 2px 4px;
+  border-radius: 2px;
+}
+
+.copy-icon-btn {
+  background: none;
+  border: none;
+  padding: 2px 4px;
+  cursor: pointer;
+  font-size: 10px;
+  color: var(--text-muted);
+  transition: all 0.2s;
+  border-radius: 2px;
+  line-height: 1;
+}
+
+.copy-icon-btn:hover {
+  background: var(--bg-color);
+  color: var(--primary-color);
+}
+
+.copy-icon-btn.copied {
+  color: var(--success-color);
 }
 
 .finance {
