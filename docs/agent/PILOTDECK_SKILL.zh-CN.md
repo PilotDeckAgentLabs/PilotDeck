@@ -16,28 +16,32 @@
 ## 输入与配置
 
 - `statusFile`: 状态文件路径（默认 `pilotdeck/status.yaml`）
-- `pilotdeck.name`: PilotDeck 中的统一项目名（可选，未配置时回退 `project.name`）
+- `project.id`: PilotDeck 项目 ID（必填，映射到 `projects.id`）
+- `project.name`: 项目显示名称（必填，映射到 `projects.name`）
 - `baseUrl`: PilotDeck API base URL（默认来自状态文件 `pilotdeck.base_url`）
-- `projectId`: PilotDeck 项目 ID（默认来自状态文件 `pilotdeck.project_id`）
-- `agentId`: Agent 标识（默认来自状态文件 `pilotdeck.agent_id`）
+- `agentId`: Agent 标识（由 agent 运行时提供）
 - `agentToken`: 优先读取环境变量 `PM_AGENT_TOKEN`（或 `X-PM-Token`）
 
 ## 工作流（推荐）
 
 1) **读状态文件**，解析并校验必填字段。
-2) **创建 run**：`POST /api/agent/runs`（包含 `projectId`/`agentId`/`title`）。
-3) **同步项目字段**：
-   - 按 `pilotdeck.name` -> `project.name` 解析展示名，并写入 `projects.name`。
-   - 若多个本地仓库应归并到同一项目，请保持 `pilotdeck.project_id` 一致。
+2) **解析项目身份**：
+   - 优先尝试 `GET /api/projects/<project.id>`。
+   - 若返回 404 或缺失，则通过 `GET /api/projects` 按 `project.name` 搜索（客户端过滤）。
+   - 若未找到，则通过 `POST /api/projects` 创建，使用 `name: project.name`。
+   - 将解析或创建的 `project.id` 更新回状态文件。
+3) **创建 run**：`POST /api/agent/runs`（包含 `projectId`/`agentId`/`title`）。
+4) **同步项目字段**：
    - 优先用 `POST /api/agent/actions` 更新 `status/priority/progress/tags`。
    - 其他字段（如 `summary.goal`）用 `PATCH /api/projects/<id>` 写入自定义字段。
-4) **写入事件**：`POST /api/agent/events` 记录“为何改变”。
-5) **更新 run**：`PATCH /api/agent/runs/<id>` 写入 `summary`、`status`、`finishedAt`。
-6) **写回本地状态文件**：更新 `sync_state.*` 与 `activity_log`。
+5) **写入事件**：`POST /api/agent/events` 记录"为何改变"。
+6) **更新 run**：`PATCH /api/agent/runs/<id>` 写入 `summary`、`status`、`finishedAt`。
+7) **写回本地状态文件**：更新 `sync_state.*` 与 `activity_log`。
 
 ## 变更映射规则
 
-- `pilotdeck.name`（可选）→ `projects.name`（回退：`project.name`）
+- `project.id` → `projects.id`（唯一标识符）
+- `project.name` → `projects.name`（显示名称）
 - `status.lifecycle` → action `set_status`
 - `status.priority` → action `set_priority`
 - `status.progress` → action `set_progress`

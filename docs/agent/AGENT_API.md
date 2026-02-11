@@ -398,11 +398,16 @@ Query params (optional):
 
 ## Recommended Reporting Flow (`opencode-pilotdeck`)
 
-1) Create run with `POST /agent/runs` at task/session start.
-2) Append key timeline events with `POST /agent/events`.
-3) Write semantic project changes using `POST /agent/actions` (or `PATCH /projects/<id>` + event).
-4) Report usage with `POST /agent/usage` on `session.idle` / run end.
-5) Finalize run by `PATCH /agent/runs/<runId>` with `status`, `summary`, `finishedAt`.
+1) **Resolve project identity** (from status file):
+   - Priority 1: Use `project.id` → `GET /api/projects/<id>`
+   - Priority 2: If 404 or missing, search by `project.name` → `GET /api/projects` (client-side filter)
+   - Priority 3: If not found, create → `POST /api/projects` with `name: project.name`
+   - Update status file with resolved/created `project.id`
+2) Create run with `POST /agent/runs` at task/session start.
+3) Append key timeline events with `POST /agent/events`.
+4) Write semantic project changes using `POST /agent/actions` (or `PATCH /projects/<id>` + event).
+5) Report usage with `POST /agent/usage` on `session.idle` / run end.
+6) Finalize run by `PATCH /agent/runs/<runId>` with `status`, `summary`, `finishedAt`.
 
 ## Agent Timeline (Events)
 

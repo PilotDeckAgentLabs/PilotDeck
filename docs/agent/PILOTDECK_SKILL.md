@@ -16,28 +16,32 @@ This skill lets an agent:
 ## Inputs and Config
 
 - `statusFile`: status file path (default `pilotdeck/status.yaml`)
-- `pilotdeck.name`: canonical project name in PilotDeck (optional, falls back to `project.name`)
+- `project.id`: PilotDeck project ID (required, maps to `projects.id`)
+- `project.name`: project display name (required, maps to `projects.name`)
 - `baseUrl`: PilotDeck API base URL (default from `pilotdeck.base_url`)
-- `projectId`: PilotDeck project ID (default from `pilotdeck.project_id`)
-- `agentId`: agent identifier (default from `pilotdeck.agent_id`)
+- `agentId`: agent identifier (provided by agent runtime)
 - `agentToken`: read from `PM_AGENT_TOKEN` env (or `X-PM-Token`)
 
 ## Recommended Flow
 
 1) **Read status file**, parse and validate required fields.
-2) **Create run**: `POST /api/agent/runs` (include `projectId`/`agentId`/`title`).
-3) **Sync project fields**:
-   - Resolve display name by `pilotdeck.name` -> `project.name` and write it to `projects.name`.
-   - Keep `pilotdeck.project_id` stable across related local repos if they should sync to one shared PilotDeck project.
+2) **Resolve project identity**:
+   - Try `GET /api/projects/<project.id>` first.
+   - If 404 or missing, search by `project.name` via `GET /api/projects` (client-side filtering).
+   - If not found, create via `POST /api/projects` with `name: project.name`.
+   - Update status file with resolved/created `project.id`.
+3) **Create run**: `POST /api/agent/runs` (include `projectId`/`agentId`/`title`).
+4) **Sync project fields**:
    - Use `POST /api/agent/actions` for `status/priority/progress/tags`.
    - Use `PATCH /api/projects/<id>` for other custom fields (optional).
-4) **Write event**: `POST /api/agent/events` to capture rationale.
-5) **Update run**: `PATCH /api/agent/runs/<id>` with `summary`, `status`, `finishedAt`.
-6) **Write back local status file**: update `sync_state.*` and `activity_log`.
+5) **Write event**: `POST /api/agent/events` to capture rationale.
+6) **Update run**: `PATCH /api/agent/runs/<id>` with `summary`, `status`, `finishedAt`.
+7) **Write back local status file**: update `sync_state.*` and `activity_log`.
 
 ## Mapping Rules
 
-- `pilotdeck.name` (optional) -> `projects.name` (fallback: `project.name`)
+- `project.id` → `projects.id` (unique identifier)
+- `project.name` → `projects.name` (display name)
 - `status.lifecycle` → action `set_status`
 - `status.priority` → action `set_priority`
 - `status.progress` → action `set_progress`

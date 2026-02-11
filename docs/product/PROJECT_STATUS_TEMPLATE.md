@@ -9,7 +9,7 @@ Recommended directory under repo root:
 ```
 pilotdeck/
   status/
-    <project-key>.yaml
+    <project-id>.yaml
 ```
 
 For single-project repos, use `pilotdeck/status.yaml`.
@@ -26,16 +26,12 @@ For single-project repos, use `pilotdeck/status.yaml`.
 schema_version: 1
 
 project:
-  key: "my-project"
+  id: "proj-aaa"
   name: "My Project"
   repo: "https://example.com/org/my-project"
-  owner: "team-or-person"
 
 pilotdeck:
-  name: "PilotDeck"
   base_url: "http://localhost:8689/api"
-  project_id: "proj-aaa"
-  agent_id: "opencode/sisyphus"
   agent_token_env: "PM_AGENT_TOKEN"
 
 status:
@@ -94,8 +90,11 @@ sync_state:
 
 ## Field Mapping
 
-- `pilotdeck.name` (optional) -> `projects.name` (canonical PilotDeck display name)
-- If `pilotdeck.name` is missing, fallback to `project.name` -> `projects.name`
+- `project.id` (required) → `projects.id` (unique identifier for backend API)
+- `project.name` (required) → `projects.name` (display name in PilotDeck)
+- `project.repo` → local repository info (not synced to backend)
+- `pilotdeck.base_url` → PilotDeck API base URL
+- `pilotdeck.agent_token_env` → environment variable name for auth token
 - `status.lifecycle` → `projects.status`
 - `status.priority` → `projects.priority`
 - `status.progress` → `projects.progress`
@@ -105,7 +104,8 @@ sync_state:
 
 ## Sync Principles
 
-- Status file is the agent’s local source of truth.
+- Status file is the agent's local source of truth.
 - PilotDeck is the shared, auditable view.
-- Cross-repo mapping is supported: different local projects (for example `PilotDeckDesktop`, `opencode-pilotdeck`) can point to the same PilotDeck project by using the same `pilotdeck.project_id` and `pilotdeck.name`.
+- **Project Identification Priority**: The API uses `project.id` first; if missing or invalid (404), it falls back to searching by `project.name`.
+- Cross-repo mapping is supported: different local projects (for example `PilotDeckDesktop`, `opencode-pilotdeck`) can point to the same PilotDeck project by using the same `project.id` and `project.name`.
 - On `409` conflict: fetch latest project, reconcile, update status file, then retry.

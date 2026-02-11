@@ -395,11 +395,16 @@ Query 参数（可选）：
 
 ## 推荐上报流程（`opencode-pilotdeck`）
 
-1) 任务/会话开始：`POST /agent/runs`
-2) 关键节点：`POST /agent/events`
-3) 项目变更：优先 `POST /agent/actions`（或 `PATCH /projects/<id>` + event）
-4) 会话空闲或结束：`POST /agent/usage`
-5) 收尾：`PATCH /agent/runs/<runId>`（写 `status`、`summary`、`finishedAt`）
+1) **解析项目身份**（从状态文件）：
+   - 优先级 1：使用 `project.id` → `GET /api/projects/<id>`
+   - 优先级 2：若返回 404 或缺失，则按 `project.name` 搜索 → `GET /api/projects`（客户端过滤）
+   - 优先级 3：若未找到，则创建 → `POST /api/projects`，使用 `name: project.name`
+   - 将解析或创建的 `project.id` 更新回状态文件
+2) 任务/会话开始：`POST /agent/runs`
+3) 关键节点：`POST /agent/events`
+4) 项目变更：优先 `POST /agent/actions`（或 `PATCH /projects/<id>` + event）
+5) 会话空闲或结束：`POST /agent/usage`
+6) 收尾：`PATCH /agent/runs/<runId>`（写 `status`、`summary`、`finishedAt`）
 
 ## Agent 时间线（Events）
 

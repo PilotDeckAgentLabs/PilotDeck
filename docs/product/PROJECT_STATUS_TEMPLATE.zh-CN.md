@@ -9,7 +9,7 @@
 ```
 pilotdeck/
   status/
-    <project-key>.yaml
+    <project-id>.yaml
 ```
 
 单项目仓库可简化为：`pilotdeck/status.yaml`。
@@ -26,16 +26,12 @@ pilotdeck/
 schema_version: 1
 
 project:
-  key: "my-project"
+  id: "proj-aaa"
   name: "My Project"
   repo: "https://example.com/org/my-project"
-  owner: "team-or-person"
 
 pilotdeck:
-  name: "PilotDeck"
   base_url: "http://localhost:8689/api"
-  project_id: "proj-aaa"
-  agent_id: "opencode/sisyphus"
   agent_token_env: "PM_AGENT_TOKEN"
 
 status:
@@ -94,8 +90,11 @@ sync_state:
 
 ## 字段说明与映射
 
-- `pilotdeck.name`（可选）→ `projects.name`（PilotDeck 中展示的统一项目名）
-- 若未配置 `pilotdeck.name`，回退使用 `project.name` → `projects.name`
+- `project.id`（必填）→ `projects.id`（后端 API 的唯一标识符）
+- `project.name`（必填）→ `projects.name`（PilotDeck 中的显示名称）
+- `project.repo` → 本地仓库信息（不同步到后端）
+- `pilotdeck.base_url` → PilotDeck API 基础 URL
+- `pilotdeck.agent_token_env` → 认证 token 的环境变量名
 - `status.lifecycle` → `projects.status`
 - `status.priority` → `projects.priority`
 - `status.progress` → `projects.progress`
@@ -105,7 +104,8 @@ sync_state:
 
 ## 同步原则
 
-- 状态文件是 Agent 的“本地真实源”。
-- PilotDeck 是“协作视角的可审计视图”。
-- 支持跨仓库映射：不同本地项目（例如 `PilotDeckDesktop`、`opencode-pilotdeck`）可通过相同的 `pilotdeck.project_id` 与 `pilotdeck.name` 归并到同一个 PilotDeck 项目。
+- 状态文件是 Agent 的"本地真实源"。
+- PilotDeck 是"协作视角的可审计视图"。
+- **项目识别优先级**：API 优先使用 `project.id`；如果缺失或无效（404），则回退使用 `project.name` 进行搜索。
+- 支持跨仓库映射：不同本地项目（例如 `PilotDeckDesktop`、`opencode-pilotdeck`）可通过相同的 `project.id` 与 `project.name` 归并到同一个 PilotDeck 项目。
 - 遇到 `409`（updatedAt 冲突）时：先拉取最新项目并对比，再更新本地状态文件并重试。
