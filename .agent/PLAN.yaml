@@ -1,0 +1,54 @@
+schema_version: 1
+
+plan:
+  current_cycle: 4
+  current_step_id: "S1"
+  objective: "Ship production-ready AgentOps enhancements for PilotDeck vNext"
+  success_criteria:
+    - "Real-time project/runs/events updates are available"
+    - "Timeline planning view and analytics are operational"
+    - "Agent workflow remains conflict-safe and auditable"
+
+steps:
+  - id: "S1"
+    title: "Implement real-time update channel"
+    status: "doing" # todo|doing|done|blocked
+    depends_on: []
+    acceptance:
+      - "Web UI receives project/run/event updates without manual refresh"
+      - "Backend push mechanism has reconnect and error handling strategy"
+      - "No regression in existing REST behavior"
+
+  - id: "S2"
+    title: "Add Gantt/timeline planning view"
+    status: "todo"
+    depends_on: ["S1"]
+    acceptance:
+      - "Projects and milestones render in timeline view"
+      - "Status/priority/progress filters work in timeline context"
+      - "Mobile/desktop layouts remain usable"
+
+  - id: "S3"
+    title: "Enhance analytics dashboard"
+    status: "todo"
+    depends_on: []
+    acceptance:
+      - "Token/cost and throughput views support useful trend analysis"
+      - "Data aggregation endpoints and frontend widgets align"
+
+  - id: "S4"
+    title: "Harden sync and conflict recovery workflow"
+    status: "todo"
+    depends_on: ["S1"]
+    acceptance:
+      - "Conflict path (409) is deterministic and documented"
+      - "Status file writeback includes sync outcome and remote IDs"
+
+  - id: "S5"
+    title: "Verification and production readiness gate"
+    status: "todo"
+    depends_on: ["S2", "S3", "S4"]
+    acceptance:
+      - "Frontend build passes"
+      - "Critical backend API checks pass"
+      - "Architecture and integration docs are updated to shipped behavior"

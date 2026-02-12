@@ -1,36 +1,35 @@
 <template>
   <div class="project-card" @click="$emit('click', project)" :data-project-id="project.id">
+    <!-- Header: Title and Status/Priority -->
     <div class="card-header">
-      <div class="header-top">
-        <h3 class="project-name">{{ project.name }}</h3>
-        <span class="badge priority-badge" :class="`priority-${project.priority}`">
-          {{ priorityLabels[project.priority] || project.priority }}
-        </span>
+      <div class="header-main">
+        <h3 class="project-name" :title="project.name">{{ project.name }}</h3>
+        <div class="badges">
+          <span class="badge priority-badge" :class="`priority-${project.priority}`">
+            {{ priorityLabels[project.priority] || project.priority }}
+          </span>
+        </div>
       </div>
-      <div class="project-id-chip" :title="project.id">
-        <code class="id-chip-value">{{ project.id.slice(0, 10) }}...</code>
-        <button
-          @click.stop="copyId"
-          class="copy-id-chip-btn"
-          :class="{ copied: copied }"
-          :title="copied ? '已复制!' : '复制完整ID'"
-        >
-          {{ copied ? '✓' : '复制ID' }}
-        </button>
-      </div>
-      <div class="status-wrapper">
+      <div class="header-sub">
         <span class="badge status-badge" :class="`status-${project.status}`">
           <span class="status-dot"></span>
           {{ statusLabels[project.status] || project.status }}
         </span>
+        <span v-if="project.category" class="category-tag">{{ project.category }}</span>
       </div>
     </div>
 
-    <p v-if="project.description" class="project-desc">{{ project.description }}</p>
+    <!-- Body: Description with fixed space -->
+    <div class="card-body">
+      <p class="project-desc" :class="{ 'no-desc': !project.description }">
+        {{ project.description || '暂无项目内容描述...' }}
+      </p>
+    </div>
 
-    <div class="progress-section">
-      <div class="progress-label">
-        <span>进度</span>
+    <!-- Progress: Sleek bar -->
+    <div class="card-progress">
+      <div class="progress-info">
+        <span class="progress-label">项目进度</span>
         <span class="progress-value">{{ project.progress }}%</span>
       </div>
       <div class="progress-track">
@@ -38,18 +37,28 @@
       </div>
     </div>
 
+    <!-- Footer: ID and Finance -->
     <div class="card-footer">
-      <div class="footer-content">
-        <div class="finance">
-          <div class="finance-item cost">
-            <span class="label">成本</span>
-            <span class="value">¥{{ formatMoney(project.cost.total) }}</span>
-          </div>
-          <div class="finance-divider"></div>
-          <div class="finance-item revenue">
-            <span class="label">收入</span>
-            <span class="value">¥{{ formatMoney(project.revenue.total) }}</span>
-          </div>
+      <div 
+        class="project-id-mini" 
+        @click.stop="copyId" 
+        :class="{ copied: copied }"
+        :title="`点击复制 ID: ${project.id}`"
+      >
+        <span class="id-hash">#</span>
+        <span class="id-value">{{ project.id.slice(0, 8) }}</span>
+        <span class="copy-tooltip" v-if="copied">已复制</span>
+      </div>
+      
+      <div class="finance-summary">
+        <div class="finance-item cost">
+          <span class="fin-label">成本</span>
+          <span class="fin-value">¥{{ formatMoney(project.cost.total) }}</span>
+        </div>
+        <div class="finance-sep"></div>
+        <div class="finance-item revenue">
+          <span class="fin-label">收入</span>
+          <span class="fin-value">¥{{ formatMoney(project.revenue.total) }}</span>
         </div>
       </div>
     </div>
@@ -91,7 +100,6 @@ function formatMoney(value: number): string {
 
 async function copyId(event: Event) {
   event.stopPropagation()
-
   try {
     await navigator.clipboard.writeText(props.project.id)
     copied.value = true
@@ -117,6 +125,7 @@ async function copyId(event: Event) {
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  height: 240px;
 }
 
 .project-card:hover {
@@ -126,196 +135,218 @@ async function copyId(event: Event) {
 }
 
 .card-header {
-  margin-bottom: 16px;
+  margin-bottom: 12px;
+  flex-shrink: 0;
 }
 
-.header-top {
+.header-main {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
+  gap: 12px;
   margin-bottom: 8px;
 }
 
 .project-name {
   margin: 0;
-  font-size: 18px;
-  font-weight: 600;
+  font-size: 17px;
+  font-weight: 700;
   color: var(--text-primary);
-  line-height: 1.4;
+  line-height: 1.3;
   flex: 1;
-  padding-right: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.status-wrapper {
+.header-sub {
   display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
-.project-id-chip {
+.category-tag {
+  font-size: 11px;
+  color: var(--text-muted);
+  background: var(--bg-secondary);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.card-body {
+  flex: 1;
+  margin-bottom: 16px;
+  overflow: hidden;
+}
+
+.project-desc {
+  color: var(--text-secondary);
+  font-size: 13.5px;
+  margin: 0;
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.project-desc.no-desc {
+  color: var(--text-muted);
+  font-style: italic;
+  opacity: 0.6;
+}
+
+.card-progress {
+  margin-bottom: 16px;
+  flex-shrink: 0;
+}
+
+.progress-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.progress-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.progress-value {
+  font-size: 12px;
+  color: var(--primary-color);
+  font-weight: 700;
+  font-family: 'SF Mono', monospace;
+}
+
+.progress-track {
+  height: 4px;
+  background: var(--bg-secondary);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--primary-color);
+  border-radius: 2px;
+  transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.card-footer {
+  border-top: 1px solid var(--border-color);
+  padding-top: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: auto;
+  flex-shrink: 0;
+}
+
+.project-id-mini {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  margin-bottom: 10px;
-}
-
-.id-chip-value {
+  gap: 2px;
   font-family: 'SF Mono', 'Roboto Mono', monospace;
   font-size: 11px;
-  color: var(--text-secondary);
-  background: var(--bg-color);
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
-  padding: 4px 8px;
-}
-
-.copy-id-chip-btn {
-  border: 1px solid var(--border-color);
-  background: var(--card-bg);
   color: var(--text-muted);
-  border-radius: 6px;
-  font-size: 11px;
-  font-weight: 500;
-  padding: 4px 8px;
+  opacity: 0.6;
   cursor: pointer;
   transition: all 0.2s;
+  padding: 4px 0;
+  position: relative;
 }
 
-.copy-id-chip-btn:hover {
-  border-color: var(--primary-color);
+.project-id-mini:hover {
+  opacity: 1;
   color: var(--primary-color);
 }
 
-.copy-id-chip-btn.copied {
-  border-color: var(--success-color);
+.id-hash {
+  font-weight: bold;
+}
+
+.copy-tooltip {
+  position: absolute;
+  top: -24px;
+  left: 0;
+  background: var(--primary-color);
+  color: white;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.finance-summary {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.finance-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.finance-sep {
+  width: 1px;
+  height: 16px;
+  background: var(--border-color);
+}
+
+.fin-label {
+  font-size: 9px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  font-weight: 500;
+}
+
+.fin-value {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  font-family: 'SF Mono', monospace;
+}
+
+.finance-item.revenue .fin-value {
   color: var(--success-color);
 }
 
 .badge {
   display: inline-flex;
   align-items: center;
-  padding: 4px 10px;
+  padding: 3px 8px;
   border-radius: 6px;
-  font-size: 12px;
-  font-weight: 500;
+  font-size: 11px;
+  font-weight: 600;
   line-height: 1;
-  letter-spacing: 0.5px;
 }
 
 .status-badge {
-  gap: 6px;
+  gap: 4px;
 }
 
 .status-dot {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
   border-radius: 50%;
   background-color: currentColor;
 }
 
-/* Status Colors from Tokens */
 .status-planning { background: var(--status-planning-bg); color: var(--status-planning-text); }
 .status-in-progress { background: var(--status-in-progress-bg); color: var(--status-in-progress-text); }
 .status-paused { background: var(--status-paused-bg); color: var(--status-paused-text); }
 .status-completed { background: var(--status-completed-bg); color: var(--status-completed-text); }
 .status-cancelled { background: var(--status-cancelled-bg); color: var(--status-cancelled-text); }
 
-/* Priority Colors from Tokens */
 .priority-low { background: var(--priority-low-bg); color: var(--priority-low-text); }
 .priority-medium { background: var(--priority-medium-bg); color: var(--priority-medium-text); }
 .priority-high { background: var(--priority-high-bg); color: var(--priority-high-text); }
 .priority-urgent { background: var(--priority-urgent-bg); color: var(--priority-urgent-text); }
-
-.project-desc {
-  color: var(--text-secondary);
-  font-size: 14px;
-  margin: 0 0 20px 0;
-  line-height: 1.6;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  flex-grow: 1;
-}
-
-.progress-section {
-  margin-bottom: 16px;
-}
-
-.progress-label {
-  display: flex;
-  justify-content: space-between;
-  font-size: 12px;
-  margin-bottom: 8px;
-  color: var(--text-muted);
-  font-weight: 500;
-}
-
-.progress-value {
-  color: var(--primary-color);
-  font-weight: 600;
-}
-
-.progress-track {
-  height: 6px;
-  background: var(--bg-color);
-  border-radius: 3px;
-  overflow: hidden;
-}
-
-.progress-fill {
-  height: 100%;
-  background: linear-gradient(90deg, var(--primary-color), var(--primary-hover));
-  border-radius: 3px;
-  transition: width 0.5s ease-out;
-  box-shadow: 0 0 10px var(--primary-glow);
-}
-
-.card-footer {
-  border-top: 1px solid var(--border-color);
-  padding-top: 12px;
-  margin-top: auto;
-}
-
-.footer-content {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.finance {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 13px;
-}
-
-.finance-divider {
-  width: 1px;
-  height: 24px;
-  background: var(--border-color);
-}
-
-.finance-item {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  flex: 1;
-}
-
-.finance-item.cost { text-align: left; }
-.finance-item.revenue { text-align: right; }
-
-.finance-item .label {
-  color: var(--text-muted);
-  font-size: 11px;
-  text-transform: uppercase;
-}
-
-.finance-item .value {
-  font-weight: 600;
-  font-size: 14px;
-  font-family: 'SF Mono', 'Roboto Mono', monospace; /* Tech feel */
-}
-
-.finance-item.cost .value { color: var(--text-primary); }
-.finance-item.revenue .value { color: var(--success-color); }
 </style>

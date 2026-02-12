@@ -57,7 +57,9 @@
             :project="project"
             @click="openDetailModal(project)"
           />
-          <span v-if="sortMode === 'manual'" class="drag-cue" title="拖动排序">⋮⋮</span>
+          <div v-if="sortMode === 'manual'" class="drag-handle-overlay">
+            <span class="drag-icon">⠿</span>
+          </div>
         </div>
       </div>
 
@@ -94,7 +96,7 @@
               class="clickable-row"
             >
               <td class="drag-handle-cell" @click.stop>
-                <span v-if="sortMode === 'manual'" class="drag-handle" title="拖动排序">⋮⋮</span>
+                <span v-if="sortMode === 'manual'" class="drag-handle-icon">⠿</span>
               </td>
               <td class="project-name-cell">
                 <input
@@ -107,7 +109,7 @@
                 />
               </td>
               <td class="project-id-cell">
-                <code class="table-project-id" :title="project.id">{{ project.id.slice(0, 10) }}...</code>
+                <code class="table-project-id" :title="project.id">#{{ project.id.slice(0, 8) }}</code>
                 <button 
                   @click.stop="copyProjectId(project.id)" 
                   class="copy-table-btn"
@@ -549,10 +551,6 @@ onMounted(() => {
   margin-bottom: 8px;
 }
 
-.empty-state .btn, .error-state .btn {
-  margin-top: 24px;
-}
-
 /* Grid view */
 .projects-grid {
   display: grid;
@@ -563,6 +561,7 @@ onMounted(() => {
 
 .draggable-card-wrapper {
   position: relative;
+  transition: transform 0.2s, opacity 0.2s;
 }
 
 .draggable-card-wrapper.drag-enabled {
@@ -570,22 +569,39 @@ onMounted(() => {
 }
 
 .draggable-card-wrapper.dragging {
-  opacity: 0.6;
+  opacity: 0.4;
+  transform: scale(0.98);
 }
 
 .draggable-card-wrapper.drag-over {
-  outline: 2px dashed var(--primary-color);
+  outline: 2px solid var(--primary-color);
   outline-offset: 4px;
   border-radius: var(--border-radius);
+  background: rgba(59, 130, 246, 0.05);
 }
 
-.drag-cue {
+.drag-handle-overlay {
   position: absolute;
   top: 10px;
   right: 10px;
-  font-size: 14px;
-  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid var(--border-color);
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-sm);
   pointer-events: none;
+  z-index: 10;
+  opacity: 0.7;
+}
+
+.drag-icon {
+  font-size: 16px;
+  color: var(--text-muted);
+  line-height: 1;
 }
 
 @keyframes fadeIn {
@@ -621,7 +637,7 @@ onMounted(() => {
 }
 
 .drag-column {
-  width: 30px;
+  width: 40px;
   padding: 0 8px;
 }
 
@@ -633,7 +649,7 @@ onMounted(() => {
 }
 
 .projects-table tbody tr {
-  transition: background 0.2s;
+  transition: background 0.2s, opacity 0.2s;
   cursor: pointer;
 }
 
@@ -642,22 +658,31 @@ onMounted(() => {
 }
 
 .projects-table tbody tr.dragging {
-  opacity: 0.6;
+  opacity: 0.4;
+  background: var(--bg-secondary) !important;
 }
 
 .projects-table tbody tr.drag-over td {
-  box-shadow: inset 0 2px 0 var(--primary-color), inset 0 -2px 0 var(--primary-color);
+  border-top: 2px solid var(--primary-color);
+  background: rgba(59, 130, 246, 0.05);
 }
 
 .drag-handle-cell {
-  width: 30px;
+  width: 40px;
   padding: 0 8px;
+  text-align: center;
 }
 
-.drag-handle {
-  font-size: 14px;
+.drag-handle-icon {
+  font-size: 18px;
   color: var(--text-muted);
   user-select: none;
+  opacity: 0.4;
+  transition: opacity 0.2s;
+}
+
+.projects-table tbody tr:hover .drag-handle-icon {
+  opacity: 1;
 }
 
 .projects-table tbody tr:hover {
@@ -666,11 +691,6 @@ onMounted(() => {
 
 .projects-table tbody tr:last-child td {
   border-bottom: none;
-}
-
-.project-name-text {
-  font-weight: 600;
-  color: var(--text-primary);
 }
 
 .inline-input,
@@ -720,16 +740,15 @@ onMounted(() => {
 
 .project-id-cell {
   font-family: 'SF Mono', 'Roboto Mono', monospace;
-  min-width: 140px;
+  min-width: 130px;
 }
 
 .table-project-id {
   font-size: 11px;
-  color: var(--text-secondary);
-  background: var(--bg-color);
+  color: var(--text-muted);
+  background: var(--bg-secondary);
   padding: 3px 6px;
-  border-radius: 3px;
-  border: 1px solid var(--border-color);
+  border-radius: 4px;
   margin-right: 6px;
 }
 
@@ -737,16 +756,14 @@ onMounted(() => {
   background: none;
   border: 1px solid var(--border-color);
   padding: 2px 6px;
-  border-radius: 3px;
+  border-radius: 4px;
   cursor: pointer;
   font-size: 11px;
   color: var(--text-muted);
   transition: all 0.2s;
-  line-height: 1;
 }
 
 .copy-table-btn:hover {
-  background: var(--bg-color);
   border-color: var(--primary-color);
   color: var(--primary-color);
 }
@@ -756,38 +773,6 @@ onMounted(() => {
   border-color: var(--success-color);
   color: white;
 }
-
-/* Reuse Badge Styles (Consider extracting to component next time) */
-.badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 10px;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 500;
-}
-
-.status-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background-color: currentColor;
-}
-
-.status-planning { background: var(--status-planning-bg); color: var(--status-planning-text); }
-.status-in-progress { background: var(--status-in-progress-bg); color: var(--status-in-progress-text); }
-.status-paused { background: var(--status-paused-bg); color: var(--status-paused-text); }
-.status-completed { background: var(--status-completed-bg); color: var(--status-completed-text); }
-.status-cancelled { background: var(--status-cancelled-bg); color: var(--status-cancelled-text); }
-
-.priority-low { background: var(--priority-low-bg); color: var(--priority-low-text); }
-.priority-medium { background: var(--priority-medium-bg); color: var(--priority-medium-text); }
-.priority-high { background: var(--priority-high-bg); color: var(--priority-high-text); }
-.priority-urgent { background: var(--priority-urgent-bg); color: var(--priority-urgent-text); }
-
-.text-secondary { color: var(--text-secondary); }
-.text-muted { color: var(--text-muted); }
 
 /* Progress Bar in Table */
 .progress-cell {
@@ -803,42 +788,19 @@ onMounted(() => {
 .progress-bar-wrapper {
   flex: 1;
   height: 6px;
-  background: var(--bg-color);
+  background: var(--bg-secondary);
   border-radius: 3px;
   overflow: hidden;
 }
 
 .progress-bar {
   height: 100%;
-  background: linear-gradient(90deg, var(--primary-color), var(--primary-hover));
+  background: var(--primary-color);
   border-radius: 3px;
   transition: width 0.3s;
 }
 
-.progress-text {
-  font-size: 12px;
-  font-family: 'SF Mono', monospace;
-  color: var(--text-secondary);
-  width: 36px;
-  text-align: right;
-}
-
-.tags-cell {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-
-.tag {
-  padding: 2px 8px;
-  background: var(--bg-color);
-  border: 1px solid var(--border-color);
-  border-radius: 4px;
-  font-size: 11px;
-  color: var(--text-secondary);
-}
-
-/* Buttons (Global Override for this page if needed) */
+/* Buttons */
 .btn {
   padding: 10px 20px;
   border-radius: 8px;
@@ -855,24 +817,11 @@ onMounted(() => {
 .btn-primary {
   background: var(--primary-color);
   color: white;
-  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
-}
-
-.btn-primary:hover {
-  background: var(--primary-hover);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(59, 130, 246, 0.4);
 }
 
 .btn-secondary {
   background: white;
   color: var(--text-primary);
   border: 1px solid var(--border-color);
-}
-
-.btn-secondary:hover {
-  background: var(--bg-color);
-  border-color: var(--primary-color);
-  color: var(--primary-color);
 }
 </style>

@@ -1,0 +1,21 @@
+schema_version: 1
+
+execution:
+  run_status: "running" # running|success|failed|cancelled
+  active_step_id: "S1"
+  last_checkpoint: "CP-0042"
+  blockers: []
+  next_actions:
+    - "Define realtime transport strategy and event contract"
+    - "Implement backend emission path and frontend subscription path"
+    - "Validate reconnection and fallback behavior"
+
+sync:
+  mode: "remote_preferred" # local_only|remote_preferred|remote_required
+  last_sync_result: "success" # not_started|success|partial|failed
+  last_sync_checkpoint: "CP-0041"
+  remote_ids:
+    project_id: "proj-46e1c1d8"
+    run_id: "run-22636052"
+    event_id: null
+  errors: []
