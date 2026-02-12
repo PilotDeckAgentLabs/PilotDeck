@@ -1,0 +1,33 @@
+schema_version: 1
+
+project:
+  id: "proj-template"
+  name: "Template Project"
+  repo: "github.com/org/repo"
+
+status:
+  lifecycle: "planning" # planning|in-progress|paused|completed|cancelled
+  priority: "medium" # low|medium|high|urgent
+  progress: 0 # 0..100
+  tags: ["agent", "scaffold"]
+
+summary:
+  goal: "Describe the current objective"
+  acceptance:
+    - "Criterion 1"
+    - "Criterion 2"
+
+milestones:
+  - name: "Milestone 1"
+    status: "todo" # todo|doing|done|blocked
+
+activity_log: []
+
+sync_state:
+  sync_status: "not_started" # not_started|local_only|remote_synced|remote_sync_failed
+  last_sync_at: null
+  last_sync_result: "not_started" # not_started|success|partial|failed
+  resolved_project_id: null
+  last_run_id: null
+  last_event_id: null
+  errors: []

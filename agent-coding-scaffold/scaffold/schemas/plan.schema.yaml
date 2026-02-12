@@ -1,0 +1,48 @@
+schema_version: 1
+title: plan
+type: object
+required:
+  - schema_version
+  - plan
+  - steps
+properties:
+  schema_version:
+    type: integer
+    enum: [1]
+  plan:
+    type: object
+    required: [current_cycle, current_step_id, objective]
+    properties:
+      current_cycle:
+        type: integer
+        minimum: 1
+      current_step_id:
+        type: string
+      objective:
+        type: string
+      success_criteria:
+        type: array
+        items:
+          type: string
+  steps:
+    type: array
+    minItems: 1
+    items:
+      type: object
+      required: [id, title, status, depends_on, acceptance]
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        status:
+          type: string
+          enum: [todo, doing, done, blocked]
+        depends_on:
+          type: array
+          items:
+            type: string
+        acceptance:
+          type: array
+          items:
+            type: string
