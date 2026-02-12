@@ -582,12 +582,12 @@ onMounted(() => {
 
 .drag-handle-overlay {
   position: absolute;
-  top: 10px;
-  right: 10px;
+  top: 6px;
+  left: 6px;
   background: rgba(255, 255, 255, 0.9);
   border: 1px solid var(--border-color);
-  width: 28px;
-  height: 28px;
+  width: 24px;
+  height: 24px;
   border-radius: 6px;
   display: flex;
   align-items: center;
@@ -599,7 +599,7 @@ onMounted(() => {
 }
 
 .drag-icon {
-  font-size: 16px;
+  font-size: 14px;
   color: var(--text-muted);
   line-height: 1;
 }

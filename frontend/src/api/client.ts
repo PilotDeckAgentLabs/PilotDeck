@@ -240,7 +240,7 @@ export async function deleteProject(id: string): Promise<void> {
 export async function reorderProjects(projectIds: string[]): Promise<Project[]> {
   const response = await apiFetch<ApiResponse<Project[]>>('/projects/reorder', {
     method: 'POST',
-    body: JSON.stringify({ order: projectIds }),
+    body: JSON.stringify({ ids: projectIds }),
   })
 
   return response.data || []
