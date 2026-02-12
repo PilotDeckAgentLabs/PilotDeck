@@ -1,7 +1,7 @@
 <template>
   <div class="project-card" @click="$emit('click', project)" :data-project-id="project.id">
     <!-- Header: Title and Status/Priority -->
-    <div class="card-header">
+    <div class="card-header" :class="{ 'with-handle': showDragHandle }">
       <div class="header-main">
         <h3 class="project-name" :title="project.name">{{ project.name }}</h3>
         <div class="badges">
@@ -71,6 +71,7 @@ import type { Project } from '../api/types'
 
 const props = defineProps<{
   project: Project
+  showDragHandle?: boolean
 }>()
 
 defineEmits<{
@@ -125,7 +126,7 @@ async function copyId(event: Event) {
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  height: 240px;
+  height: 280px;
 }
 
 .project-card:hover {
@@ -152,11 +153,18 @@ async function copyId(event: Event) {
   font-size: 17px;
   font-weight: 700;
   color: var(--text-primary);
-  line-height: 1.3;
+  line-height: 1.4;
   flex: 1;
-  white-space: nowrap;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  word-break: break-word;
+}
+
+.card-header.with-handle .project-name {
+  padding-left: 28px;
 }
 
 .header-sub {

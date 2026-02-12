@@ -55,6 +55,7 @@
         >
           <ProjectCard
             :project="project"
+            :show-drag-handle="sortMode === 'manual'"
             @click="openDetailModal(project)"
           />
           <div v-if="sortMode === 'manual'" class="drag-handle-overlay">
