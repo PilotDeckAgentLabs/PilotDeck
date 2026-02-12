@@ -7,6 +7,17 @@
           {{ priorityLabels[project.priority] || project.priority }}
         </span>
       </div>
+      <div class="project-id-chip" :title="project.id">
+        <code class="id-chip-value">{{ project.id.slice(0, 10) }}...</code>
+        <button
+          @click.stop="copyId"
+          class="copy-id-chip-btn"
+          :class="{ copied: copied }"
+          :title="copied ? '已复制!' : '复制完整ID'"
+        >
+          {{ copied ? '✓' : '复制ID' }}
+        </button>
+      </div>
       <div class="status-wrapper">
         <span class="badge status-badge" :class="`status-${project.status}`">
           <span class="status-dot"></span>
@@ -29,18 +40,6 @@
 
     <div class="card-footer">
       <div class="footer-content">
-        <div class="project-id-small" :title="project.id">
-          <span class="id-label">ID:</span>
-          <code class="id-value">{{ project.id.slice(0, 8) }}...</code>
-          <button 
-            @click.stop="copyId" 
-            class="copy-icon-btn"
-            :class="{ copied: copied }"
-            :title="copied ? '已复制!' : '复制完整ID'"
-          >
-            {{ copied ? '✓' : '📋' }}
-          </button>
-        </div>
         <div class="finance">
           <div class="finance-item cost">
             <span class="label">成本</span>
@@ -61,7 +60,7 @@
 import { ref } from 'vue'
 import type { Project } from '../api/types'
 
-defineProps<{
+const props = defineProps<{
   project: Project
 }>()
 
@@ -91,12 +90,10 @@ function formatMoney(value: number): string {
 }
 
 async function copyId(event: Event) {
-  const project = (event.currentTarget as HTMLElement).closest('.project-card')
-  const projectId = project?.getAttribute('data-project-id')
-  if (!projectId) return
-  
+  event.stopPropagation()
+
   try {
-    await navigator.clipboard.writeText(projectId)
+    await navigator.clipboard.writeText(props.project.id)
     copied.value = true
     setTimeout(() => {
       copied.value = false
@@ -151,6 +148,45 @@ async function copyId(event: Event) {
 
 .status-wrapper {
   display: flex;
+}
+
+.project-id-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.id-chip-value {
+  font-family: 'SF Mono', 'Roboto Mono', monospace;
+  font-size: 11px;
+  color: var(--text-secondary);
+  background: var(--bg-color);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 4px 8px;
+}
+
+.copy-id-chip-btn {
+  border: 1px solid var(--border-color);
+  background: var(--card-bg);
+  color: var(--text-muted);
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 4px 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.copy-id-chip-btn:hover {
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+}
+
+.copy-id-chip-btn.copied {
+  border-color: var(--success-color);
+  color: var(--success-color);
 }
 
 .badge {
@@ -243,51 +279,6 @@ async function copyId(event: Event) {
   display: flex;
   flex-direction: column;
   gap: 8px;
-}
-
-.project-id-small {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 10px;
-  color: var(--text-muted);
-  padding: 2px 0;
-}
-
-.project-id-small .id-label {
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.project-id-small .id-value {
-  font-family: 'SF Mono', 'Roboto Mono', monospace;
-  font-size: 10px;
-  color: var(--text-secondary);
-  background: var(--bg-color);
-  padding: 2px 4px;
-  border-radius: 2px;
-}
-
-.copy-icon-btn {
-  background: none;
-  border: none;
-  padding: 2px 4px;
-  cursor: pointer;
-  font-size: 10px;
-  color: var(--text-muted);
-  transition: all 0.2s;
-  border-radius: 2px;
-  line-height: 1;
-}
-
-.copy-icon-btn:hover {
-  background: var(--bg-color);
-  color: var(--primary-color);
-}
-
-.copy-icon-btn.copied {
-  color: var(--success-color);
 }
 
 .finance {

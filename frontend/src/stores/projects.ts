@@ -134,6 +134,25 @@ export const useProjectsStore = defineStore('projects', () => {
     }
   }
 
+  async function patchProject(
+    id: string,
+    formData: Partial<ProjectFormData>
+  ): Promise<Project> {
+    error.value = null
+
+    try {
+      const project = await api.updateProject(id, formData)
+      const index = projects.value.findIndex((p) => p.id === id)
+      if (index !== -1) {
+        projects.value[index] = project
+      }
+      return project
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : 'Failed to update project'
+      throw err
+    }
+  }
+
   async function deleteProject(id: string): Promise<void> {
     loading.value = true
     error.value = null
@@ -205,6 +224,7 @@ export const useProjectsStore = defineStore('projects', () => {
     fetchProjects,
     createProject,
     updateProject,
+    patchProject,
     deleteProject,
     reorderProjects,
     setFilters,

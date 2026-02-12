@@ -205,6 +205,7 @@ export async function updateProject(
     ...(data.notes !== undefined && { notes: data.notes }),
     ...(data.status !== undefined && { status: data.status }),
     ...(data.priority !== undefined && { priority: data.priority }),
+    ...(data.category !== undefined && { category: data.category }),
     ...(data.progress !== undefined && { progress: data.progress }),
     ...(data.tags !== undefined && { tags: data.tags }),
     ...(data.github !== undefined && { github: data.github }),
@@ -351,4 +352,3 @@ export async function logout(): Promise<void> {
     method: 'POST',
   })
 }
-

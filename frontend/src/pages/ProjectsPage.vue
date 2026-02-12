@@ -38,12 +38,27 @@
 
       <!-- Card view -->
       <div v-else-if="viewMode === 'card'" class="projects-grid">
-        <ProjectCard
+        <div
           v-for="project in filteredProjects"
           :key="project.id"
-          :project="project"
-          @click="openDetailModal(project)"
-        />
+          class="draggable-card-wrapper"
+          :class="{
+            'drag-enabled': sortMode === 'manual',
+            'dragging': draggingProjectId === project.id,
+            'drag-over': dragOverProjectId === project.id && draggingProjectId !== project.id,
+          }"
+          :draggable="sortMode === 'manual'"
+          @dragstart="onDragStart(project.id)"
+          @dragover.prevent="onDragOver(project.id)"
+          @drop.prevent="onDrop(project.id)"
+          @dragend="onDragEnd"
+        >
+          <ProjectCard
+            :project="project"
+            @click="openDetailModal(project)"
+          />
+          <span v-if="sortMode === 'manual'" class="drag-cue" title="拖动排序">⋮⋮</span>
+        </div>
       </div>
 
       <!-- List view (table) -->
@@ -51,6 +66,7 @@
         <table class="projects-table">
           <thead>
             <tr>
+              <th class="drag-column"></th>
               <th>项目名称</th>
               <th>项目ID</th>
               <th>状态</th>
@@ -64,11 +80,31 @@
             <tr
               v-for="project in filteredProjects"
               :key="project.id"
+              :draggable="sortMode === 'manual'"
+              :class="{
+                'drag-enabled': sortMode === 'manual',
+                'dragging': draggingProjectId === project.id,
+                'drag-over': dragOverProjectId === project.id && draggingProjectId !== project.id,
+              }"
+              @dragstart="onDragStart(project.id)"
+              @dragover.prevent="onDragOver(project.id)"
+              @drop.prevent="onDrop(project.id)"
+              @dragend="onDragEnd"
               @click="openDetailModal(project)"
               class="clickable-row"
             >
+              <td class="drag-handle-cell" @click.stop>
+                <span v-if="sortMode === 'manual'" class="drag-handle" title="拖动排序">⋮⋮</span>
+              </td>
               <td class="project-name-cell">
-                <span class="project-name-text">{{ project.name }}</span>
+                <input
+                  class="inline-input project-name-input"
+                  :value="getDraft(project).name"
+                  @click.stop
+                  @input="setDraftValue(project.id, 'name', ($event.target as HTMLInputElement).value)"
+                  @blur="saveInlineField(project, 'name')"
+                  @keydown.enter.prevent="saveInlineField(project, 'name')"
+                />
               </td>
               <td class="project-id-cell">
                 <code class="table-project-id" :title="project.id">{{ project.id.slice(0, 10) }}...</code>
@@ -81,31 +117,66 @@
                   {{ copiedId === project.id ? '✓' : '📋' }}
                 </button>
               </td>
-              <td>
-                <span class="badge" :class="`status-${project.status}`">
-                  <span class="status-dot"></span>
-                  {{ statusLabels[project.status] || project.status }}
-                </span>
+              <td @click.stop>
+                <select
+                  class="inline-select"
+                  :value="getDraft(project).status"
+                  @change="updateSelectField(project, 'status', ($event.target as HTMLSelectElement).value)"
+                >
+                  <option value="planning">计划中</option>
+                  <option value="in-progress">进行中</option>
+                  <option value="paused">暂停</option>
+                  <option value="completed">已完成</option>
+                  <option value="cancelled">已取消</option>
+                </select>
               </td>
-              <td>
-                <span class="badge" :class="`priority-${project.priority}`">
-                  {{ priorityLabels[project.priority] || project.priority }}
-                </span>
+              <td @click.stop>
+                <select
+                  class="inline-select"
+                  :value="getDraft(project).priority"
+                  @change="updateSelectField(project, 'priority', ($event.target as HTMLSelectElement).value)"
+                >
+                  <option value="low">低</option>
+                  <option value="medium">中</option>
+                  <option value="high">高</option>
+                  <option value="urgent">紧急</option>
+                </select>
               </td>
-              <td class="text-secondary">{{ project.category || '-' }}</td>
-              <td class="progress-cell">
+              <td class="text-secondary" @click.stop>
+                <input
+                  class="inline-input"
+                  :value="getDraft(project).category"
+                  @input="setDraftValue(project.id, 'category', ($event.target as HTMLInputElement).value)"
+                  @blur="saveInlineField(project, 'category')"
+                  @keydown.enter.prevent="saveInlineField(project, 'category')"
+                />
+              </td>
+              <td class="progress-cell" @click.stop>
                 <div class="progress-cell-inner">
                   <div class="progress-bar-wrapper">
-                    <div class="progress-bar" :style="{ width: `${project.progress}%` }"></div>
+                    <div class="progress-bar" :style="{ width: `${getDraft(project).progress}%` }"></div>
                   </div>
-                  <span class="progress-text">{{ project.progress }}%</span>
+                  <input
+                    class="inline-progress-input"
+                    type="number"
+                    min="0"
+                    max="100"
+                    :value="getDraft(project).progress"
+                    @input="setDraftValue(project.id, 'progress', ($event.target as HTMLInputElement).valueAsNumber)"
+                    @blur="saveInlineField(project, 'progress')"
+                    @keydown.enter.prevent="saveInlineField(project, 'progress')"
+                  />
                 </div>
               </td>
-              <td>
-                <div class="tags-cell">
-                  <span v-for="tag in project.tags" :key="tag" class="tag">{{ tag }}</span>
-                  <span v-if="!project.tags || project.tags.length === 0" class="text-muted">-</span>
-                </div>
+              <td @click.stop>
+                <input
+                  class="inline-input tags-input"
+                  :value="getDraft(project).tagsText"
+                  placeholder="逗号分隔标签"
+                  @input="setDraftValue(project.id, 'tagsText', ($event.target as HTMLInputElement).value)"
+                  @blur="saveInlineField(project, 'tagsText')"
+                  @keydown.enter.prevent="saveInlineField(project, 'tagsText')"
+                />
               </td>
             </tr>
           </tbody>
@@ -144,11 +215,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, reactive } from 'vue'
 import { useProjectsStore } from '../stores/projects'
 import { useToast } from '../composables/useToast'
 import { storeToRefs } from 'pinia'
-import type { Project, ProjectFormData } from '../api/types'
+import type { Project, ProjectFormData, ProjectStatus, ProjectPriority } from '../api/types'
 import TheHeader from '../components/TheHeader.vue'
 import TheFilters from '../components/TheFilters.vue'
 import ProjectCard from '../components/ProjectCard.vue'
@@ -158,7 +229,7 @@ import ProjectDetailModal from '../components/ProjectDetailModal.vue'
 import OpsModal from '../components/OpsModal.vue'
 
 const projectsStore = useProjectsStore()
-const { projects, filteredProjects, loading, error, viewMode } = storeToRefs(projectsStore)
+const { projects, filteredProjects, loading, error, viewMode, sortMode } = storeToRefs(projectsStore)
 const { showToast } = useToast()
 
 // Modal states
@@ -169,22 +240,19 @@ const showDetailModal = ref(false)
 const selectedProject = ref<Project | null>(null)
 const editingProject = ref<Project | null>(null)
 const copiedId = ref<string | null>(null)
+const draggingProjectId = ref<string | null>(null)
+const dragOverProjectId = ref<string | null>(null)
 
-// Labels
-const statusLabels: Record<string, string> = {
-  'planning': '计划中',
-  'in-progress': '进行中',
-  'paused': '暂停',
-  'completed': '已完成',
-  'cancelled': '已取消',
+interface InlineDraft {
+  name: string
+  status: ProjectStatus
+  priority: ProjectPriority
+  category: string
+  progress: number
+  tagsText: string
 }
 
-const priorityLabels: Record<string, string> = {
-  'low': '低',
-  'medium': '中',
-  'high': '高',
-  'urgent': '紧急',
-}
+const inlineDrafts = reactive<Record<string, InlineDraft>>({})
 
 // Load projects
 async function loadProjects() {
@@ -234,6 +302,170 @@ async function copyProjectId(id: string) {
   } catch (err) {
     console.error('Failed to copy project ID:', err)
   }
+}
+
+function getDraft(project: Project): InlineDraft {
+  if (!inlineDrafts[project.id]) {
+    inlineDrafts[project.id] = {
+      name: project.name,
+      status: project.status,
+      priority: project.priority,
+      category: project.category || '',
+      progress: project.progress,
+      tagsText: project.tags?.join(', ') || '',
+    }
+  }
+  return inlineDrafts[project.id]
+}
+
+function setDraftValue(
+  projectId: string,
+  field: keyof InlineDraft,
+  value: string | number
+) {
+  const draft = inlineDrafts[projectId]
+  if (!draft) return
+  if (field === 'progress') {
+    const normalized = Number.isFinite(value as number) ? Number(value) : 0
+    draft.progress = Math.min(100, Math.max(0, normalized))
+    return
+  }
+  draft[field] = String(value) as never
+}
+
+async function saveInlineField(project: Project, field: keyof InlineDraft) {
+  const draft = getDraft(project)
+  const payload: Partial<ProjectFormData> = {}
+
+  if (field === 'name') {
+    const next = draft.name.trim()
+    if (!next || next === project.name) return
+    payload.name = next
+  }
+
+  if (field === 'category') {
+    const next = draft.category.trim()
+    if ((project.category || '') === next) return
+    payload.category = next
+  }
+
+  if (field === 'progress') {
+    const next = Math.min(100, Math.max(0, Math.round(draft.progress)))
+    if (next === project.progress) return
+    payload.progress = next
+    draft.progress = next
+  }
+
+  if (field === 'tagsText') {
+    const nextTags = draft.tagsText
+      .split(',')
+      .map((tag) => tag.trim())
+      .filter(Boolean)
+    const current = project.tags || []
+    if (JSON.stringify(nextTags) === JSON.stringify(current)) return
+    payload.tags = nextTags
+    draft.tagsText = nextTags.join(', ')
+  }
+
+  if (Object.keys(payload).length === 0) return
+
+  try {
+    const updated = await projectsStore.patchProject(project.id, payload)
+    inlineDrafts[project.id] = {
+      name: updated.name,
+      status: updated.status,
+      priority: updated.priority,
+      category: updated.category || '',
+      progress: updated.progress,
+      tagsText: updated.tags?.join(', ') || '',
+    }
+  } catch (err) {
+    console.error('Failed to save inline field:', err)
+    showToast('保存失败，请重试', 'error')
+  }
+}
+
+async function updateSelectField(
+  project: Project,
+  field: 'status' | 'priority',
+  value: string
+) {
+  const draft = getDraft(project)
+  if (field === 'status') {
+    const status = value as ProjectStatus
+    if (status === project.status) return
+    draft.status = status
+    try {
+      await projectsStore.patchProject(project.id, { status })
+    } catch (err) {
+      draft.status = project.status
+      console.error('Failed to update status:', err)
+      showToast('更新状态失败', 'error')
+    }
+    return
+  }
+
+  const priority = value as ProjectPriority
+  if (priority === project.priority) return
+  draft.priority = priority
+  try {
+    await projectsStore.patchProject(project.id, { priority })
+  } catch (err) {
+    draft.priority = project.priority
+    console.error('Failed to update priority:', err)
+    showToast('更新优先级失败', 'error')
+  }
+}
+
+function reorderVisibleProjects(sourceId: string, targetId: string): string[] {
+  const visibleIds = filteredProjects.value.map((project) => project.id)
+  const sourceIndex = visibleIds.indexOf(sourceId)
+  const targetIndex = visibleIds.indexOf(targetId)
+  if (sourceIndex < 0 || targetIndex < 0 || sourceIndex === targetIndex) {
+    return []
+  }
+
+  const moved = [...visibleIds]
+  const [item] = moved.splice(sourceIndex, 1)
+  moved.splice(targetIndex, 0, item)
+
+  const visibleSet = new Set(visibleIds)
+  const queue = [...moved]
+  return projects.value.map((project) => {
+    if (!visibleSet.has(project.id)) return project.id
+    return queue.shift() || project.id
+  })
+}
+
+function onDragStart(projectId: string) {
+  if (sortMode.value !== 'manual') return
+  draggingProjectId.value = projectId
+}
+
+function onDragOver(projectId: string) {
+  if (!draggingProjectId.value || sortMode.value !== 'manual') return
+  dragOverProjectId.value = projectId
+}
+
+async function onDrop(projectId: string) {
+  if (!draggingProjectId.value || sortMode.value !== 'manual') return
+  const sourceId = draggingProjectId.value
+  const reordered = reorderVisibleProjects(sourceId, projectId)
+  if (reordered.length > 0) {
+    try {
+      await projectsStore.reorderProjects(reordered)
+      showToast('项目顺序已更新', 'success')
+    } catch (err) {
+      console.error('Failed to reorder projects:', err)
+      showToast('拖动排序失败', 'error')
+    }
+  }
+  onDragEnd()
+}
+
+function onDragEnd() {
+  draggingProjectId.value = null
+  dragOverProjectId.value = null
 }
 
 // CRUD handlers
@@ -329,6 +561,33 @@ onMounted(() => {
   animation: fadeIn 0.4s ease-out;
 }
 
+.draggable-card-wrapper {
+  position: relative;
+}
+
+.draggable-card-wrapper.drag-enabled {
+  cursor: grab;
+}
+
+.draggable-card-wrapper.dragging {
+  opacity: 0.6;
+}
+
+.draggable-card-wrapper.drag-over {
+  outline: 2px dashed var(--primary-color);
+  outline-offset: 4px;
+  border-radius: var(--border-radius);
+}
+
+.drag-cue {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  font-size: 14px;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
@@ -361,6 +620,11 @@ onMounted(() => {
   border-bottom: 1px solid var(--border-color);
 }
 
+.drag-column {
+  width: 30px;
+  padding: 0 8px;
+}
+
 .projects-table td {
   padding: 16px 20px;
   border-bottom: 1px solid var(--border-color);
@@ -371,6 +635,29 @@ onMounted(() => {
 .projects-table tbody tr {
   transition: background 0.2s;
   cursor: pointer;
+}
+
+.projects-table tbody tr.drag-enabled {
+  cursor: grab;
+}
+
+.projects-table tbody tr.dragging {
+  opacity: 0.6;
+}
+
+.projects-table tbody tr.drag-over td {
+  box-shadow: inset 0 2px 0 var(--primary-color), inset 0 -2px 0 var(--primary-color);
+}
+
+.drag-handle-cell {
+  width: 30px;
+  padding: 0 8px;
+}
+
+.drag-handle {
+  font-size: 14px;
+  color: var(--text-muted);
+  user-select: none;
 }
 
 .projects-table tbody tr:hover {
@@ -384,6 +671,51 @@ onMounted(() => {
 .project-name-text {
   font-weight: 600;
   color: var(--text-primary);
+}
+
+.inline-input,
+.inline-select,
+.inline-progress-input {
+  width: 100%;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 14px;
+  border-radius: 6px;
+  padding: 6px 8px;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.inline-input:hover,
+.inline-select:hover,
+.inline-progress-input:hover {
+  background: rgba(59, 130, 246, 0.05);
+}
+
+.inline-input:focus,
+.inline-select:focus,
+.inline-progress-input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  background: var(--card-bg);
+}
+
+.project-name-input {
+  font-weight: 600;
+}
+
+.inline-select {
+  cursor: pointer;
+}
+
+.inline-progress-input {
+  width: 64px;
+  text-align: right;
+  font-family: 'SF Mono', 'Roboto Mono', monospace;
+}
+
+.tags-input {
+  min-width: 160px;
 }
 
 .project-id-cell {

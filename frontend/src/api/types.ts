@@ -174,6 +174,7 @@ export interface ProjectFormData {
   notes?: string
   status: ProjectStatus
   priority: ProjectPriority
+  category?: string
   progress: number
   costTotal: number
   revenueTotal: number
@@ -202,4 +203,3 @@ export interface AuthResponse {
   }
   error?: string
 }
-
