@@ -1,6 +1,7 @@
 // Typed API Client for PilotDeck
 import type {
   Project,
+  OrderItem,
   AgentRun,
   AgentEvent,
   Stats,
@@ -179,6 +180,7 @@ export async function createProject(data: ProjectFormData): Promise<Project> {
     cost: { total: data.costTotal },
     revenue: { total: data.revenueTotal },
     tags: data.tags || [],
+    ...(data.orders && { orders: data.orders }),
     ...(data.github && { github: data.github }),
     ...(data.workspace && { workspace: data.workspace }),
   }
@@ -199,7 +201,21 @@ export async function updateProject(
   id: string,
   data: Partial<ProjectFormData>
 ): Promise<Project> {
-  const projectData: any = {
+  const projectData: {
+    name?: string
+    description?: string
+    notes?: string
+    status?: ProjectFormData['status']
+    priority?: ProjectFormData['priority']
+    category?: string
+    progress?: number
+    tags?: string[]
+    github?: string
+    workspace?: string
+    orders?: OrderItem[]
+    cost?: { total: number }
+    revenue?: { total: number }
+  } = {
     ...(data.name !== undefined && { name: data.name }),
     ...(data.description !== undefined && { description: data.description }),
     ...(data.notes !== undefined && { notes: data.notes }),
@@ -210,6 +226,7 @@ export async function updateProject(
     ...(data.tags !== undefined && { tags: data.tags }),
     ...(data.github !== undefined && { github: data.github }),
     ...(data.workspace !== undefined && { workspace: data.workspace }),
+    ...(data.orders !== undefined && { orders: data.orders }),
   }
 
   if (data.costTotal !== undefined) {

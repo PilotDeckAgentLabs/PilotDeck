@@ -11,6 +11,20 @@ export interface CostRevenue {
   [key: string]: any  // Allow additional keys
 }
 
+export type OrderStatus = 'pending' | 'confirmed' | 'delivered' | 'completed' | 'cancelled'
+
+export interface OrderItem {
+  id: string
+  title: string
+  customer: string
+  amount: number
+  cost: number
+  status: OrderStatus
+  createdAt: string
+  dueDate?: string
+  note?: string
+}
+
 export interface Project {
   id: string
   name: string
@@ -28,6 +42,7 @@ export interface Project {
   updatedAt: string  // ISO 8601
   github?: string
   workspace?: string
+  orders?: OrderItem[]
   [key: string]: any  // Allow additional fields
 }
 
@@ -181,6 +196,7 @@ export interface ProjectFormData {
   github?: string
   workspace?: string
   tags?: string[]
+  orders?: OrderItem[]
 }
 
 // ===== Auth Types =====

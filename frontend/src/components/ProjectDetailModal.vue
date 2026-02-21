@@ -33,6 +33,12 @@
         >
           Agent 时间线
         </button>
+        <button
+          :class="['tab-btn', { active: activeTab === 'orders' }]"
+          @click="activeTab = 'orders'"
+        >
+          订单管理
+        </button>
       </div>
 
       <!-- Details Tab -->
@@ -97,13 +103,26 @@
           </div>
           <div class="detail-section">
             <label>已花费 (元)</label>
-            <p>{{ formatMoney(getActualCostValue(project)) }}</p>
+            <p>{{ formatMoney(currentCostTotal) }}</p>
+          </div>
+        </div>
+
+        <div class="detail-row">
+          <div class="detail-section">
+            <label>订单收入 (元)</label>
+            <p>{{ formatMoney(currentRevenueTotal) }}</p>
+          </div>
+          <div class="detail-section">
+            <label>净收益 (元)</label>
+            <p :class="currentRevenueTotal - currentCostTotal >= 0 ? 'profit' : 'loss'">
+              {{ formatMoney(currentRevenueTotal - currentCostTotal) }}
+            </p>
           </div>
         </div>
       </div>
 
       <!-- Timeline Tab -->
-      <div v-else class="modal-body timeline-body">
+      <div v-else-if="activeTab === 'timeline'" class="modal-body timeline-body">
         <div v-if="timelineError" class="error-timeline">
           <p>{{ timelineError }}</p>
           <button @click="loadTimeline" class="btn btn-secondary">重试</button>
@@ -117,19 +136,101 @@
         />
       </div>
 
+      <!-- Orders Tab -->
+      <div v-else class="modal-body orders-body">
+        <div class="orders-toolbar">
+          <div class="orders-summary">
+            <div class="summary-item">
+              <span class="summary-label">订单数</span>
+              <span class="summary-value">{{ orders.length }}</span>
+            </div>
+            <div class="summary-item">
+              <span class="summary-label">订单收入</span>
+              <span class="summary-value revenue">¥{{ formatMoney(orderStats.totalAmount) }}</span>
+            </div>
+            <div class="summary-item">
+              <span class="summary-label">订单成本</span>
+              <span class="summary-value cost">¥{{ formatMoney(orderStats.totalCost) }}</span>
+            </div>
+            <div class="summary-item">
+              <span class="summary-label">订单利润</span>
+              <span class="summary-value" :class="orderStats.profit >= 0 ? 'profit' : 'loss'">
+                ¥{{ formatMoney(orderStats.profit) }}
+              </span>
+            </div>
+          </div>
+          <button class="btn btn-primary" @click="showOrderModal = true">创建订单</button>
+        </div>
+
+        <div v-if="orders.length === 0" class="orders-empty">
+          <div class="empty-icon">🧾</div>
+          <h3>暂无订单</h3>
+          <p>创建第一笔订单后，成本与收益会自动汇总到项目财务。</p>
+        </div>
+
+        <div v-else class="orders-table-wrap">
+          <table class="orders-table">
+            <thead>
+              <tr>
+                <th>订单名称</th>
+                <th>客户</th>
+                <th>金额</th>
+                <th>成本</th>
+                <th>利润</th>
+                <th>状态</th>
+                <th>创建时间</th>
+                <th>交付日期</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="order in orders" :key="order.id">
+                <td>
+                  <div class="order-title">{{ order.title }}</div>
+                  <div v-if="order.note" class="order-note">{{ order.note }}</div>
+                </td>
+                <td>{{ order.customer }}</td>
+                <td>¥{{ formatMoney(order.amount) }}</td>
+                <td>¥{{ formatMoney(order.cost) }}</td>
+                <td :class="order.amount - order.cost >= 0 ? 'profit' : 'loss'">
+                  ¥{{ formatMoney(order.amount - order.cost) }}
+                </td>
+                <td>
+                  <span class="badge" :class="`status-${order.status}`">{{ orderStatusLabels[order.status] }}</span>
+                </td>
+                <td>{{ formatDate(order.createdAt) }}</td>
+                <td>{{ order.dueDate || '-' }}</td>
+                <td>
+                  <button class="btn btn-danger btn-xs" @click="removeOrder(order.id)">删除</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       <div class="modal-footer">
         <button @click="$emit('edit', project)" class="btn btn-primary">编辑</button>
         <button @click="handleDelete" class="btn btn-danger">删除</button>
       </div>
     </div>
+
+    <OrderFormModal
+      :show="showOrderModal"
+      @close="showOrderModal = false"
+      @save="handleSaveOrder"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useAgentStore } from '../stores/agent'
+import { useProjectsStore } from '../stores/projects'
+import { useToast } from '../composables/useToast'
 import AgentTimeline from './timeline/AgentTimeline.vue'
-import type { Project, AgentRun, AgentEvent } from '../api/types'
+import OrderFormModal from './OrderFormModal.vue'
+import type { Project, OrderItem } from '../api/types'
 
 interface Props {
   project: Project
@@ -143,10 +244,14 @@ const emit = defineEmits<{
 }>()
 
 const agentStore = useAgentStore()
-const activeTab = ref<'details' | 'timeline'>('details')
+const projectsStore = useProjectsStore()
+const { showToast } = useToast()
+const activeTab = ref<'details' | 'timeline' | 'orders'>('details')
 const loadingTimeline = ref(false)
 const timelineError = ref<string | null>(null)
 const idCopied = ref(false)
+const showOrderModal = ref(false)
+const orders = ref<OrderItem[]>([])
 
 const statusLabels: Record<string, string> = {
   'planning': '计划中',
@@ -163,12 +268,107 @@ const priorityLabels: Record<string, string> = {
   'urgent': '紧急',
 }
 
-const eventTypeLabels: Record<string, string> = {
-  'status_change': '状态变更',
-  'progress_update': '进度更新',
-  'comment': '备注',
-  'file_added': '文件添加',
-  'milestone': '里程碑',
+const orderStatusLabels: Record<string, string> = {
+  pending: '待确认',
+  confirmed: '已确认',
+  delivered: '交付中',
+  completed: '已完成',
+  cancelled: '已取消',
+}
+
+const orderStats = computed(() => {
+  return orders.value.reduce(
+    (acc, order) => {
+      acc.totalAmount += Number(order.amount || 0)
+      acc.totalCost += Number(order.cost || 0)
+      acc.profit = acc.totalAmount - acc.totalCost
+      return acc
+    },
+    { totalAmount: 0, totalCost: 0, profit: 0 }
+  )
+})
+
+const currentCostTotal = computed(() => {
+  if (orders.value.length > 0) {
+    return orderStats.value.totalCost
+  }
+  return getActualCostValue(props.project)
+})
+
+const currentRevenueTotal = computed(() => {
+  if (orders.value.length > 0) {
+    return orderStats.value.totalAmount
+  }
+  return getRevenueValue(props.project)
+})
+
+watch(
+  () => props.project,
+  (project) => {
+    const normalized = Array.isArray(project.orders) ? project.orders : []
+    orders.value = normalized
+      .map((item) => {
+        const rawStatus = String(item.status || '')
+        const normalizedStatus =
+          rawStatus === 'pending' ||
+          rawStatus === 'confirmed' ||
+          rawStatus === 'delivered' ||
+          rawStatus === 'completed' ||
+          rawStatus === 'cancelled'
+            ? rawStatus
+            : 'pending'
+
+        return {
+          id: String(item.id),
+          title: String(item.title || ''),
+          customer: String(item.customer || ''),
+          amount: Number(item.amount || 0),
+          cost: Number(item.cost || 0),
+          status: normalizedStatus,
+          createdAt: String(item.createdAt || new Date().toISOString()),
+          dueDate: item.dueDate ? String(item.dueDate) : undefined,
+          note: item.note ? String(item.note) : undefined,
+        }
+      })
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt)) as OrderItem[]
+  },
+  { immediate: true, deep: true }
+)
+
+async function persistOrders(nextOrders: OrderItem[], successMessage: string) {
+  try {
+    const { totalAmount, totalCost } = nextOrders.reduce(
+      (acc, order) => {
+        acc.totalAmount += Number(order.amount || 0)
+        acc.totalCost += Number(order.cost || 0)
+        return acc
+      },
+      { totalAmount: 0, totalCost: 0 }
+    )
+    const updatedProject = await projectsStore.patchProject(props.project.id, {
+      orders: nextOrders,
+      revenueTotal: totalAmount,
+      costTotal: totalCost,
+    })
+    orders.value = (updatedProject.orders || []) as OrderItem[]
+    showToast(successMessage, 'success')
+  } catch (err) {
+    console.error('Failed to save orders:', err)
+    showToast('保存订单失败，请稍后重试', 'error')
+  }
+}
+
+async function handleSaveOrder(order: OrderItem) {
+  const nextOrders = [order, ...orders.value]
+  orders.value = nextOrders
+  showOrderModal.value = false
+  await persistOrders(nextOrders, '订单已创建')
+}
+
+async function removeOrder(orderId: string) {
+  const nextOrders = orders.value.filter((order) => order.id !== orderId)
+  orders.value = nextOrders
+  await persistOrders(nextOrders, '订单已删除')
 }
 
 async function loadTimeline() {
@@ -226,6 +426,15 @@ function getActualCostValue(project: Project): number {
   const cost = (project as { cost?: { total?: unknown } }).cost
   if (cost && typeof cost === 'object') {
     const num = Number(cost.total)
+    return Number.isFinite(num) ? num : 0
+  }
+  return 0
+}
+
+function getRevenueValue(project: Project): number {
+  const revenue = (project as { revenue?: { total?: unknown } }).revenue
+  if (revenue && typeof revenue === 'object') {
+    const num = Number(revenue.total)
     return Number.isFinite(num) ? num : 0
   }
   return 0
@@ -408,6 +617,129 @@ async function copyProjectId() {
   padding: 16px 24px;
 }
 
+.orders-body {
+  padding: 20px 24px;
+}
+
+.orders-toolbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.orders-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(120px, 1fr));
+  gap: 10px;
+  flex: 1;
+}
+
+.summary-item {
+  padding: 10px 12px;
+  background: var(--bg-color);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+}
+
+.summary-label {
+  display: block;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--text-muted);
+  margin-bottom: 3px;
+}
+
+.summary-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.summary-value.revenue,
+.profit {
+  color: var(--success-color);
+}
+
+.summary-value.cost,
+.loss {
+  color: var(--danger-color);
+}
+
+.orders-empty {
+  text-align: center;
+  padding: 38px 18px;
+  border: 1px dashed var(--border-color);
+  border-radius: 12px;
+  color: var(--text-secondary);
+}
+
+.orders-empty .empty-icon {
+  font-size: 30px;
+  margin-bottom: 8px;
+}
+
+.orders-empty h3 {
+  margin: 0 0 6px;
+  color: var(--text-primary);
+}
+
+.orders-empty p {
+  margin: 0;
+}
+
+.orders-table-wrap {
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  overflow-x: auto;
+}
+
+.orders-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 860px;
+}
+
+.orders-table th,
+.orders-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 13px;
+  color: var(--text-primary);
+  vertical-align: top;
+}
+
+.orders-table th {
+  background: var(--bg-color);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  font-size: 11px;
+}
+
+.orders-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.order-title {
+  font-weight: 600;
+}
+
+.order-note {
+  margin-top: 2px;
+  color: var(--text-muted);
+  font-size: 12px;
+  max-width: 220px;
+}
+
+.btn-xs {
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+}
+
 .detail-section {
   margin-bottom: 20px;
 }
@@ -492,6 +824,9 @@ async function copyProjectId() {
 .status-paused { background: var(--status-paused-bg); color: var(--status-paused-text); }
 .status-completed { background: var(--status-completed-bg); color: var(--status-completed-text); }
 .status-cancelled { background: var(--status-cancelled-bg); color: var(--status-cancelled-text); }
+.status-pending { background: #e2e8f0; color: #334155; }
+.status-confirmed { background: #dbeafe; color: #1d4ed8; }
+.status-delivered { background: #fef3c7; color: #b45309; }
 
 .priority-low { background: var(--priority-low-bg); color: var(--priority-low-text); }
 .priority-medium { background: var(--priority-medium-bg); color: var(--priority-medium-text); }
@@ -554,5 +889,16 @@ async function copyProjectId() {
 .btn-danger:hover {
   background: #dc2626;
   box-shadow: 0 4px 8px rgba(239, 68, 68, 0.3);
+}
+
+@media (max-width: 980px) {
+  .orders-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .orders-summary {
+    grid-template-columns: repeat(2, minmax(120px, 1fr));
+  }
 }
 </style>
