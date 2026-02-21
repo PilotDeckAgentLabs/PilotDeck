@@ -1,5 +1,7 @@
 <template>
   <div class="project-card" @click="$emit('click', project)" :data-project-id="project.id">
+    <div v-if="showDragHandle" class="card-drag-handle">⠿</div>
+
     <!-- Header: Title and Status/Priority -->
     <div class="card-header" :class="{ 'with-handle': showDragHandle }">
       <div class="header-main">
@@ -127,6 +129,26 @@ async function copyId(event: Event) {
   display: flex;
   flex-direction: column;
   height: 280px;
+}
+
+.card-drag-handle {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  background: var(--card-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  font-size: 14px;
+  opacity: 0.75;
+  pointer-events: none;
+  box-shadow: var(--shadow-sm);
+  z-index: 2;
 }
 
 .project-card:hover {

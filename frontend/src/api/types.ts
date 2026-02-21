@@ -11,17 +11,14 @@ export interface CostRevenue {
   [key: string]: any  // Allow additional keys
 }
 
-export type OrderStatus = 'pending' | 'confirmed' | 'delivered' | 'completed' | 'cancelled'
+export type OrderKind = 'income' | 'expense'
 
 export interface OrderItem {
   id: string
   title: string
-  customer: string
+  kind: OrderKind
   amount: number
-  cost: number
-  status: OrderStatus
   createdAt: string
-  dueDate?: string
   note?: string
 }
 

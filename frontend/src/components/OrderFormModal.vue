@@ -2,65 +2,50 @@
   <div v-if="show" class="modal-overlay" @click.self="$emit('close')">
     <div class="modal-content">
       <div class="modal-header">
-        <h2>创建订单</h2>
+        <h2>新增财务记录</h2>
         <button class="close-btn" @click="$emit('close')">&times;</button>
       </div>
 
       <form @submit.prevent="handleSubmit" class="order-form">
-        <div class="form-row">
-          <div class="form-group">
-            <label for="orderTitle">订单名称 <span class="required">*</span></label>
-            <input id="orderTitle" v-model.trim="form.title" type="text" required placeholder="如：企业官网定制项目" />
-          </div>
-          <div class="form-group">
-            <label for="orderCustomer">客户名称 <span class="required">*</span></label>
-            <input id="orderCustomer" v-model.trim="form.customer" type="text" required placeholder="如：某科技有限公司" />
-          </div>
+        <div class="form-group">
+          <label for="orderTitle">记录名称 <span class="required">*</span></label>
+          <input id="orderTitle" v-model.trim="form.title" type="text" required placeholder="如：研发经费 / 购买云服务器 / 服务收入" />
         </div>
 
         <div class="form-row">
           <div class="form-group">
-            <label for="orderAmount">订单金额（元）<span class="required">*</span></label>
-            <input id="orderAmount" v-model.number="form.amount" type="number" min="0" step="0.01" required />
-          </div>
-          <div class="form-group">
-            <label for="orderCost">预计成本（元）<span class="required">*</span></label>
-            <input id="orderCost" v-model.number="form.cost" type="number" min="0" step="0.01" required />
-          </div>
-        </div>
-
-        <div class="form-row">
-          <div class="form-group">
-            <label for="orderStatus">订单状态</label>
-            <select id="orderStatus" v-model="form.status">
-              <option value="pending">待确认</option>
-              <option value="confirmed">已确认</option>
-              <option value="delivered">交付中</option>
-              <option value="completed">已完成</option>
-              <option value="cancelled">已取消</option>
+            <label for="orderType">类型 <span class="required">*</span></label>
+            <select id="orderType" v-model="form.kind">
+              <option value="income">收入</option>
+              <option value="expense">支出</option>
             </select>
           </div>
           <div class="form-group">
-            <label for="orderDueDate">交付日期</label>
-            <input id="orderDueDate" v-model="form.dueDate" type="date" />
+            <label for="orderAmount">金额（元）<span class="required">*</span></label>
+            <input id="orderAmount" v-model.number="form.amount" type="number" min="0" step="0.01" required />
           </div>
         </div>
 
         <div class="form-group">
-          <label for="orderNote">订单备注</label>
-          <textarea id="orderNote" v-model.trim="form.note" rows="3" placeholder="补充交付范围、回款节点等"></textarea>
+          <label for="orderDate">记账日期</label>
+          <input id="orderDate" v-model="form.date" type="date" />
+        </div>
+
+        <div class="form-group">
+          <label for="orderNote">备注</label>
+          <textarea id="orderNote" v-model.trim="form.note" rows="3" placeholder="可填写来源、用途、审批编号等"></textarea>
         </div>
 
         <div class="preview">
-          <span class="preview-label">预估毛利</span>
-          <span class="preview-value" :class="profit >= 0 ? 'profit' : 'loss'">
-            ¥{{ formatMoney(profit) }}
+          <span class="preview-label">本次影响</span>
+          <span class="preview-value" :class="previewAmount >= 0 ? 'profit' : 'loss'">
+            {{ previewAmount >= 0 ? '+' : '-' }}¥{{ formatMoney(Math.abs(previewAmount)) }}
           </span>
         </div>
 
         <div class="modal-actions">
           <button type="button" class="btn btn-secondary" @click="$emit('close')">取消</button>
-          <button type="submit" class="btn btn-primary">创建订单</button>
+          <button type="submit" class="btn btn-primary">保存记录</button>
         </div>
       </form>
     </div>
@@ -69,7 +54,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import type { OrderItem, OrderStatus } from '../api/types'
+import type { OrderItem, OrderKind } from '../api/types'
 
 defineProps<{
   show: boolean
@@ -82,23 +67,22 @@ const emit = defineEmits<{
 
 const form = ref<{
   title: string
-  customer: string
+  kind: OrderKind
   amount: number
-  cost: number
-  status: OrderStatus
-  dueDate: string
+  date: string
   note: string
 }>({
   title: '',
-  customer: '',
+  kind: 'expense',
   amount: 0,
-  cost: 0,
-  status: 'pending',
-  dueDate: '',
+  date: new Date().toISOString().slice(0, 10),
   note: '',
 })
 
-const profit = computed(() => Number(form.value.amount || 0) - Number(form.value.cost || 0))
+const previewAmount = computed(() => {
+  const amount = Number(form.value.amount || 0)
+  return form.value.kind === 'income' ? amount : -amount
+})
 
 function formatMoney(value: number): string {
   return Number(value || 0).toLocaleString('zh-CN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })
@@ -107,11 +91,9 @@ function formatMoney(value: number): string {
 function resetForm() {
   form.value = {
     title: '',
-    customer: '',
+    kind: 'expense',
     amount: 0,
-    cost: 0,
-    status: 'pending',
-    dueDate: '',
+    date: new Date().toISOString().slice(0, 10),
     note: '',
   }
 }
@@ -122,23 +104,21 @@ function createOrderId(): string {
 
 function handleSubmit() {
   const title = form.value.title.trim()
-  const customer = form.value.customer.trim()
   const amount = Number(form.value.amount || 0)
-  const cost = Number(form.value.cost || 0)
 
-  if (!title || !customer || amount < 0 || cost < 0) {
+  if (!title || amount < 0) {
     return
   }
+
+  const parsedDate = form.value.date ? new Date(`${form.value.date}T00:00:00`) : new Date()
+  const createdAt = Number.isNaN(parsedDate.getTime()) ? new Date().toISOString() : parsedDate.toISOString()
 
   emit('save', {
     id: createOrderId(),
     title,
-    customer,
+    kind: form.value.kind,
     amount,
-    cost,
-    status: form.value.status,
-    createdAt: new Date().toISOString(),
-    dueDate: form.value.dueDate || undefined,
+    createdAt,
     note: form.value.note.trim() || undefined,
   })
 

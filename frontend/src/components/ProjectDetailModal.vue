@@ -37,7 +37,7 @@
           :class="['tab-btn', { active: activeTab === 'orders' }]"
           @click="activeTab = 'orders'"
         >
-          订单管理
+          财务记录
         </button>
       </div>
 
@@ -109,11 +109,11 @@
 
         <div class="detail-row">
           <div class="detail-section">
-            <label>订单收入 (元)</label>
+            <label>总收入 (元)</label>
             <p>{{ formatMoney(currentRevenueTotal) }}</p>
           </div>
           <div class="detail-section">
-            <label>净收益 (元)</label>
+            <label>净现金流 (元)</label>
             <p :class="currentRevenueTotal - currentCostTotal >= 0 ? 'profit' : 'loss'">
               {{ formatMoney(currentRevenueTotal - currentCostTotal) }}
             </p>
@@ -141,65 +141,58 @@
         <div class="orders-toolbar">
           <div class="orders-summary">
             <div class="summary-item">
-              <span class="summary-label">订单数</span>
+              <span class="summary-label">记录数</span>
               <span class="summary-value">{{ orders.length }}</span>
             </div>
             <div class="summary-item">
-              <span class="summary-label">订单收入</span>
-              <span class="summary-value revenue">¥{{ formatMoney(orderStats.totalAmount) }}</span>
+              <span class="summary-label">收入合计</span>
+              <span class="summary-value revenue">¥{{ formatMoney(orderStats.totalIncome) }}</span>
             </div>
             <div class="summary-item">
-              <span class="summary-label">订单成本</span>
-              <span class="summary-value cost">¥{{ formatMoney(orderStats.totalCost) }}</span>
+              <span class="summary-label">支出合计</span>
+              <span class="summary-value cost">¥{{ formatMoney(orderStats.totalExpense) }}</span>
             </div>
             <div class="summary-item">
-              <span class="summary-label">订单利润</span>
-              <span class="summary-value" :class="orderStats.profit >= 0 ? 'profit' : 'loss'">
-                ¥{{ formatMoney(orderStats.profit) }}
+              <span class="summary-label">净现金流</span>
+              <span class="summary-value" :class="orderStats.net >= 0 ? 'profit' : 'loss'">
+                ¥{{ formatMoney(orderStats.net) }}
               </span>
             </div>
           </div>
-          <button class="btn btn-primary" @click="showOrderModal = true">创建订单</button>
+          <button class="btn btn-primary" @click="showOrderModal = true">新增记录</button>
         </div>
 
         <div v-if="orders.length === 0" class="orders-empty">
           <div class="empty-icon">🧾</div>
-          <h3>暂无订单</h3>
-          <p>创建第一笔订单后，成本与收益会自动汇总到项目财务。</p>
+          <h3>暂无财务记录</h3>
+          <p>可记录研发经费、服务器采购、服务收入等条目。</p>
         </div>
 
         <div v-else class="orders-table-wrap">
           <table class="orders-table">
             <thead>
               <tr>
-                <th>订单名称</th>
-                <th>客户</th>
+                <th>事项</th>
+                <th>类型</th>
                 <th>金额</th>
-                <th>成本</th>
-                <th>利润</th>
-                <th>状态</th>
-                <th>创建时间</th>
-                <th>交付日期</th>
+                <th>记账时间</th>
+                <th>备注</th>
                 <th></th>
               </tr>
             </thead>
             <tbody>
               <tr v-for="order in orders" :key="order.id">
+                <td><div class="order-title">{{ order.title }}</div></td>
                 <td>
-                  <div class="order-title">{{ order.title }}</div>
-                  <div v-if="order.note" class="order-note">{{ order.note }}</div>
+                  <span class="badge" :class="order.kind === 'income' ? 'entry-income' : 'entry-expense'">
+                    {{ order.kind === 'income' ? '收入' : '支出' }}
+                  </span>
                 </td>
-                <td>{{ order.customer }}</td>
-                <td>¥{{ formatMoney(order.amount) }}</td>
-                <td>¥{{ formatMoney(order.cost) }}</td>
-                <td :class="order.amount - order.cost >= 0 ? 'profit' : 'loss'">
-                  ¥{{ formatMoney(order.amount - order.cost) }}
-                </td>
-                <td>
-                  <span class="badge" :class="`status-${order.status}`">{{ orderStatusLabels[order.status] }}</span>
+                <td :class="order.kind === 'income' ? 'profit' : 'loss'">
+                  {{ order.kind === 'income' ? '+' : '-' }}¥{{ formatMoney(order.amount) }}
                 </td>
                 <td>{{ formatDate(order.createdAt) }}</td>
-                <td>{{ order.dueDate || '-' }}</td>
+                <td class="order-note">{{ order.note || '-' }}</td>
                 <td>
                   <button class="btn btn-danger btn-xs" @click="removeOrder(order.id)">删除</button>
                 </td>
@@ -268,36 +261,32 @@ const priorityLabels: Record<string, string> = {
   'urgent': '紧急',
 }
 
-const orderStatusLabels: Record<string, string> = {
-  pending: '待确认',
-  confirmed: '已确认',
-  delivered: '交付中',
-  completed: '已完成',
-  cancelled: '已取消',
-}
-
 const orderStats = computed(() => {
   return orders.value.reduce(
     (acc, order) => {
-      acc.totalAmount += Number(order.amount || 0)
-      acc.totalCost += Number(order.cost || 0)
-      acc.profit = acc.totalAmount - acc.totalCost
+      const amount = Number(order.amount || 0)
+      if (order.kind === 'income') {
+        acc.totalIncome += amount
+      } else {
+        acc.totalExpense += amount
+      }
+      acc.net = acc.totalIncome - acc.totalExpense
       return acc
     },
-    { totalAmount: 0, totalCost: 0, profit: 0 }
+    { totalIncome: 0, totalExpense: 0, net: 0 }
   )
 })
 
 const currentCostTotal = computed(() => {
   if (orders.value.length > 0) {
-    return orderStats.value.totalCost
+    return orderStats.value.totalExpense
   }
   return getActualCostValue(props.project)
 })
 
 const currentRevenueTotal = computed(() => {
   if (orders.value.length > 0) {
-    return orderStats.value.totalAmount
+    return orderStats.value.totalIncome
   }
   return getRevenueValue(props.project)
 })
@@ -308,25 +297,28 @@ watch(
     const normalized = Array.isArray(project.orders) ? project.orders : []
     orders.value = normalized
       .map((item) => {
-        const rawStatus = String(item.status || '')
-        const normalizedStatus =
-          rawStatus === 'pending' ||
-          rawStatus === 'confirmed' ||
-          rawStatus === 'delivered' ||
-          rawStatus === 'completed' ||
-          rawStatus === 'cancelled'
-            ? rawStatus
-            : 'pending'
+        const rawKind = String((item as { kind?: unknown }).kind || '')
+        const legacyAmount = Number(item.amount || 0)
+        const legacyCost = Number((item as { cost?: unknown }).cost || 0)
+        const normalizedKind =
+          rawKind === 'income' || rawKind === 'expense'
+            ? rawKind
+            : legacyCost > 0 && legacyAmount === 0
+              ? 'expense'
+              : 'income'
+        const normalizedAmount =
+          rawKind === 'income' || rawKind === 'expense'
+            ? legacyAmount
+            : normalizedKind === 'expense'
+              ? (legacyCost > 0 ? legacyCost : legacyAmount)
+              : legacyAmount
 
         return {
           id: String(item.id),
           title: String(item.title || ''),
-          customer: String(item.customer || ''),
-          amount: Number(item.amount || 0),
-          cost: Number(item.cost || 0),
-          status: normalizedStatus,
+          kind: normalizedKind,
+          amount: Math.max(0, Number(normalizedAmount || 0)),
           createdAt: String(item.createdAt || new Date().toISOString()),
-          dueDate: item.dueDate ? String(item.dueDate) : undefined,
           note: item.note ? String(item.note) : undefined,
         }
       })
@@ -337,18 +329,22 @@ watch(
 
 async function persistOrders(nextOrders: OrderItem[], successMessage: string) {
   try {
-    const { totalAmount, totalCost } = nextOrders.reduce(
+    const { totalIncome, totalExpense } = nextOrders.reduce(
       (acc, order) => {
-        acc.totalAmount += Number(order.amount || 0)
-        acc.totalCost += Number(order.cost || 0)
+        const amount = Number(order.amount || 0)
+        if (order.kind === 'income') {
+          acc.totalIncome += amount
+        } else {
+          acc.totalExpense += amount
+        }
         return acc
       },
-      { totalAmount: 0, totalCost: 0 }
+      { totalIncome: 0, totalExpense: 0 }
     )
     const updatedProject = await projectsStore.patchProject(props.project.id, {
       orders: nextOrders,
-      revenueTotal: totalAmount,
-      costTotal: totalCost,
+      revenueTotal: totalIncome,
+      costTotal: totalExpense,
     })
     orders.value = (updatedProject.orders || []) as OrderItem[]
     showToast(successMessage, 'success')
@@ -362,13 +358,13 @@ async function handleSaveOrder(order: OrderItem) {
   const nextOrders = [order, ...orders.value]
   orders.value = nextOrders
   showOrderModal.value = false
-  await persistOrders(nextOrders, '订单已创建')
+  await persistOrders(nextOrders, '记录已新增')
 }
 
 async function removeOrder(orderId: string) {
   const nextOrders = orders.value.filter((order) => order.id !== orderId)
   orders.value = nextOrders
-  await persistOrders(nextOrders, '订单已删除')
+  await persistOrders(nextOrders, '记录已删除')
 }
 
 async function loadTimeline() {
@@ -699,7 +695,7 @@ async function copyProjectId() {
 .orders-table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 860px;
+  min-width: 720px;
 }
 
 .orders-table th,
@@ -728,10 +724,9 @@ async function copyProjectId() {
 }
 
 .order-note {
-  margin-top: 2px;
   color: var(--text-muted);
   font-size: 12px;
-  max-width: 220px;
+  max-width: 280px;
 }
 
 .btn-xs {
@@ -824,9 +819,8 @@ async function copyProjectId() {
 .status-paused { background: var(--status-paused-bg); color: var(--status-paused-text); }
 .status-completed { background: var(--status-completed-bg); color: var(--status-completed-text); }
 .status-cancelled { background: var(--status-cancelled-bg); color: var(--status-cancelled-text); }
-.status-pending { background: #e2e8f0; color: #334155; }
-.status-confirmed { background: #dbeafe; color: #1d4ed8; }
-.status-delivered { background: #fef3c7; color: #b45309; }
+.entry-income { background: #dcfce7; color: #166534; }
+.entry-expense { background: #fee2e2; color: #991b1b; }
 
 .priority-low { background: var(--priority-low-bg); color: var(--priority-low-text); }
 .priority-medium { background: var(--priority-medium-bg); color: var(--priority-medium-text); }

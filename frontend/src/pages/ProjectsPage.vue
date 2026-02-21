@@ -58,9 +58,6 @@
             :show-drag-handle="sortMode === 'manual'"
             @click="openDetailModal(project)"
           />
-          <div v-if="sortMode === 'manual'" class="drag-handle-overlay">
-            <span class="drag-icon">⠿</span>
-          </div>
         </div>
       </div>
 
@@ -579,30 +576,6 @@ onMounted(() => {
   outline-offset: 4px;
   border-radius: var(--border-radius);
   background: rgba(59, 130, 246, 0.05);
-}
-
-.drag-handle-overlay {
-  position: absolute;
-  top: 6px;
-  left: 6px;
-  background: rgba(255, 255, 255, 0.9);
-  border: 1px solid var(--border-color);
-  width: 24px;
-  height: 24px;
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: var(--shadow-sm);
-  pointer-events: none;
-  z-index: 10;
-  opacity: 0.7;
-}
-
-.drag-icon {
-  font-size: 14px;
-  color: var(--text-muted);
-  line-height: 1;
 }
 
 @keyframes fadeIn {
