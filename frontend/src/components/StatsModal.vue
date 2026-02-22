@@ -109,11 +109,15 @@ async function loadStats() {
   }
 }
 
-watch(() => props.show, (show) => {
-  if (show) {
-    loadStats()
-  }
-})
+watch(
+  () => props.show,
+  (show) => {
+    if (show) {
+      loadStats()
+    }
+  },
+  { immediate: true }
+)
 
 function formatMoney(value: number): string {
   return value.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
