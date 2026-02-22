@@ -3,39 +3,41 @@
 
 from flask import Blueprint, jsonify, current_app, request
 
+from ..domain.auth import require_login_or_agent
 
-bp = Blueprint('stats', __name__)
+
+bp = Blueprint("stats", __name__)
 
 
 def _get_project_service():
     """Get ProjectService from app extensions."""
-    return current_app.extensions.get('project_service')
+    return current_app.extensions.get("project_service")
 
 
 def _get_token_usage_store():
-    stores = current_app.extensions.get('stores', {})
-    return stores.get('token_usage_store')
+    stores = current_app.extensions.get("stores", {})
+    return stores.get("token_usage_store")
 
 
-@bp.route('', methods=['GET'])
+@bp.route("", methods=["GET"])
+@require_login_or_agent
 def get_statistics():
     """Get project statistics."""
     try:
         service = _get_project_service()
+        if not service:
+            return jsonify(
+                {"success": False, "error": "project_service not configured"}
+            ), 500
         stats = service.get_statistics()
-        
-        return jsonify({
-            "success": True,
-            "data": stats
-        })
+
+        return jsonify({"success": True, "data": stats})
     except Exception as e:
-        return jsonify({
-            "success": False,
-            "error": str(e)
-        }), 500
+        return jsonify({"success": False, "error": str(e)}), 500
 
 
-@bp.route('/tokens', methods=['GET'])
+@bp.route("/tokens", methods=["GET"])
+@require_login_or_agent
 def get_token_statistics():
     """Get token/cost aggregation for web dashboards."""
     try:
@@ -44,12 +46,12 @@ def get_token_statistics():
             return jsonify({"success": False, "error": "stores not configured"}), 500
 
         data = store.aggregate(
-            project_id=request.args.get('projectId'),
-            agent_id=request.args.get('agentId'),
-            workspace=request.args.get('workspace'),
-            source=request.args.get('source'),
-            since=request.args.get('since'),
-            until=request.args.get('until'),
+            project_id=request.args.get("projectId"),
+            agent_id=request.args.get("agentId"),
+            workspace=request.args.get("workspace"),
+            source=request.args.get("source"),
+            since=request.args.get("since"),
+            until=request.args.get("until"),
         )
         return jsonify({"success": True, "data": data})
     except Exception as e:

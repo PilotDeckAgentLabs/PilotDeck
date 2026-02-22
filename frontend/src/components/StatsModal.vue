@@ -12,6 +12,11 @@
           <p>加载中...</p>
         </div>
 
+        <div v-else-if="error" class="error-state">
+          <p class="error-text">{{ error }}</p>
+          <button class="btn btn-secondary" @click="loadStats">重试</button>
+        </div>
+
         <div v-else-if="stats" class="stats-grid">
           <div class="stat-card">
             <div class="stat-label">项目总数</div>
@@ -82,6 +87,7 @@ defineEmits<{
 
 const loading = ref(false)
 const stats = ref<Stats | null>(null)
+const error = ref<string | null>(null)
 
 const statusLabels: Record<string, string> = {
   'planning': '计划中',
@@ -100,10 +106,13 @@ const priorityLabels: Record<string, string> = {
 
 async function loadStats() {
   loading.value = true
+  error.value = null
   try {
     stats.value = await api.getStats()
-  } catch (error) {
-    console.error('Failed to load stats:', error)
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : '加载统计信息失败'
+    error.value = message
+    console.error('Failed to load stats:', e)
   } finally {
     loading.value = false
   }
@@ -191,8 +200,26 @@ function formatMoney(value: number): string {
 }
 
 .loading {
-  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
   padding: 40px;
+  color: var(--text-secondary);
+}
+
+.error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 40px;
+}
+
+.error-text {
+  color: var(--danger-color);
+  font-size: 14px;
+  text-align: center;
 }
 
 .spinner {
